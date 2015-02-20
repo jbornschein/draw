@@ -14,7 +14,7 @@ try:
     import progressbar
 
     if LooseVersion(progressbar.__version__) < LooseVersion("2.3"):
-        logger.warning("Missing required dependency: progressbar (>= 2.3), disabling ProgressBar extension")
+        logger.warning("Missing required dependency: progressbar2 (>= 2.3), disabling ProgressBar extension")
         PROGRESSBAR_AVAILABLE = False
     else:
         PROGRESSBAR_AVAILABLE = True
