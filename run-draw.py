@@ -19,6 +19,8 @@ from theano import tensor
 #from fuel.streams import DataStream
 #from fuel.schemes import SequentialScheme
 #from fuel.datasets.mnist import MNIST, BinarizedMNIST
+from blocks.datasets.streams import DataStream
+from blocks.datasets.schemes import SequentialScheme
 from blocks.datasets.mnist import MNIST 
 
 from blocks.algorithms import GradientDescent, RMSProp, Adam
@@ -37,7 +39,7 @@ from blocks.bricks.base import application, _Brick, Brick, lazy
 from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
 from blocks.bricks.cost import BinaryCrossEntropy
 
-from progress_extension import ProgressBar
+from lib.progress_extension import ProgressBar
 
 
 #-----------------------------------------------------------------------------
