@@ -221,7 +221,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
     recons_term = BinaryCrossEntropy().apply(x, x_hat)
     recons_term.name = "recons_term"
 
-    cost = -(recons_term - kl_term).mean()
+    cost = (recons_term + kl_term).mean()
     cost.name = "nll_bound"
 
     #------------------------------------------------------------
