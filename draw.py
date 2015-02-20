@@ -14,20 +14,19 @@ import theano.tensor as T
 
 from argparse import ArgumentParser
 from collections import OrderedDict
-
 from theano import tensor
-
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.mnist import MNIST, BinarizedMNIST
 
-from blocks.algorithms import GradientDescent, Momentum
+from blocks.algorithms import GradientDescent, Momentum, RMSProp
 from blocks.initialization import Uniform, IsotropicGaussian, Constant, Orthogonal 
 from blocks.filter import VariableFilter
+from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.graph import ComputationGraph
 from blocks.monitoring import aggregation
-from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
+from blocks.extensions import FinishAfter, Timing, Printing  #, ProgressBar
 from blocks.extensions.plot import Plot
 from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
@@ -36,6 +35,8 @@ from blocks.main_loop import MainLoop
 from blocks.bricks.base import application, _Brick, Brick, lazy
 from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
 from blocks.bricks.cost import BinaryCrossEntropy
+
+from progress_extension import ProgressBar
 
 class RNN(Initializable):
     def __init__(self, state_dim, input_dim, **kwargs):
@@ -53,7 +54,7 @@ class RNN(Initializable):
         
     #@application(inputs=['old_state', 'rnn_input'], outputs=['new_state'])
     def apply(self, state, new_input):
-        t = T.concatenate([state, new_input])
+        t = T.concatenate([state, new_input], axis=1)
         return T.tanh(self.transform.apply(t))
 
 
@@ -97,6 +98,7 @@ class Qsampler(Initializable, Random):
         U = self.theano_rng.normal(
                     size=mean.shape, 
                     avg=0., std=1.)
+
         # ... and scale/translate samples
         z = mean + tensor.exp(log_sigma) * U
 
@@ -113,7 +115,7 @@ class Reader(Initializable):
             
     @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['r'])
     def apply(self, x, x_hat, h_dec):
-        return T.concatenate([x, x_hat])
+        return T.concatenate([x, x_hat], axis=1)
 
 
 class Writer(Initializable):
@@ -146,35 +148,45 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
 
     x_dim = 28*28
     read_dim = 2*x_dim
-    enc_dim = 100
-    dec_dim = 100
-    z_dim = 10
+    enc_dim = 200
+    dec_dim = 200
+    z_dim = 50
+    
+    inits = {
+        #'weights_init': Orthogonal(),
+        'weights_init': IsotropicGaussian(0.0001),
+        'biases_init': Constant(0.),
+    }
     
 
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
-    reader = Reader(x_dim=x_dim, dec_dim=dec_dim)
-    writer = Writer(input_dim=dec_dim, output_dim=x_dim)
-    encoder = RNN(name="RNN_enc", state_dim=enc_dim, input_dim=(read_dim+dec_dim))
-    decoder = RNN(name="RNN_dec", state_dim=dec_dim, input_dim=z_dim)
-    q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim)
+    reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
+    writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
+    encoder = RNN(name="RNN_enc", state_dim=enc_dim, input_dim=(read_dim+dec_dim), **inits)
+    decoder = RNN(name="RNN_dec", state_dim=dec_dim, input_dim=z_dim, **inits)
+    q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
         
+
+    for brick in [reader, writer, encoder, decoder, q_sampler]:
+        brick.initialize()
+
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
 
     # This is one iteration 
-    def one_iteration(c, h_enc, z_mu, z_log_sigma, z, h_dec, x):
+    def one_iteration(c, h_enc, z_mean, z_log_sigma, z, h_dec, x):
         x_hat = x-T.nnet.sigmoid(c)
         r = reader.apply(x, x_hat, h_dec)
-        h_enc = encoder.apply(h_enc, T.concatenate([r, h_dec]))
-        mu, log_sigma, z = q_sampler.apply(h_enc)
+        h_enc = encoder.apply(h_enc, T.concatenate([r, h_dec], axis=1))
+        z_mean, z_log_sigma, z = q_sampler.apply(h_enc)
         h_dec = decoder.apply(h_dec, z)
         c = c + writer.apply(h_dec)
-        return c, h_enc, mu, log_sigma, z, h_dec
+        return c, h_enc, z_mean, z_log_sigma, z, h_dec
 
     outputs_info = [
-            T.zeros_like(x),                  # c
+            T.zeros([batch_size, x_dim]),     # c
             T.zeros([batch_size, enc_dim]),   # h_enc
             T.zeros([batch_size, z_dim]),     # z_mean
             T.zeros([batch_size, z_dim]),     # z_log_sigma
@@ -182,6 +194,12 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             T.zeros([batch_size, dec_dim]),   # h_dec
         ]
     
+
+    # Sample from mean-zeros std.-one Gaussian
+    #U = q_sampler.theano_rng.normal(
+    #            size=(n_iter, batch_size, z_dim),
+    #            avg=0., std=1.)
+
     outputs, updates = theano.scan(fn=one_iteration, 
                             sequences=[],
                             outputs_info=outputs_info,
@@ -196,7 +214,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             tensor.exp(2 * z_log_sigma) + (z_mean - prior_mu) ** 2
         ) / tensor.exp(2 * prior_log_sigma)
         - 0.5
-    ).sum(axis=2).sum(axis=1)
+    ).sum(axis=0).sum(axis=1)
     kl_term.name = "kl_term"
     
     x_hat = T.nnet.sigmoid(c[-1,:,:])
@@ -207,16 +225,19 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
     cost.name = "nll_bound"
 
     #------------------------------------------------------------
-    #cg = ComputationGraph([cost])
-    #for W in VariableFilter(roles=[WEIGHTS])(cg.variables):
-    #    cost += 0.00005 * (W**2).sum()
-    #cost.name = 'cost'
+    cg = ComputationGraph([cost])
+    params = VariableFilter(roles=[PARAMETER])(cg.variables)
 
+    #ipdb.set_trace()
+    
     algorithm = GradientDescent(
         cost=cost, 
-        #step_rule=RMSProp(learning_rate),
-        step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
+        params=params,
+        step_rule=RMSProp(learning_rate),
+        #step_rule=Adam()
+        #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
+    algorithm.add_updates(updates)
 
     #------------------------------------------------------------
 
@@ -235,21 +256,21 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             Timing(),
             ProgressBar(),
             FinishAfter(after_n_epochs=epochs),
-            DataStreamMonitoring(
-                test_costs,
-                DataStream(mnist_test,
-                    iteration_scheme=SequentialScheme(
-                    mnist_test.num_examples, batch_size)),
-                    prefix="test"),
+            #DataStreamMonitoring(
+            #    cost,
+            #    DataStream(mnist_test,
+            #        iteration_scheme=SequentialScheme(
+            #        mnist_test.num_examples, batch_size)),
+            #        prefix="test"),
             TrainingDataMonitoring(
-                [train_cost],   #+[aggregation.mean(algorithm.total_gradient_norm)],
+                [cost],   #+[aggregation.mean(algorithm.total_gradient_norm)],
                 prefix="train",
                 after_every_epoch=True),
             SerializeMainLoop(name+".pkl"),
                 Plot(
                     name,
                     channels=[
-                        ["train_"+train_cost.name]+["test_%s"%c.name for c in test_costs],
+                        [cost]
                     ]),
             Printing()])
     main_loop.run()
