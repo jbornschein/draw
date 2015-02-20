@@ -41,8 +41,6 @@ from draw import *
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_dim):
-    """ Run a Reweighted Wake Sleep experiment """
-
     if name is None:
         name = "mnist-enc%d-dec%d-z%d" % (enc_dim, dec_dim, z_dim)
 
@@ -61,7 +59,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     
     inits = {
         #'weights_init': Orthogonal(),
-        'weights_init': IsotropicGaussian(0.0001),
+        'weights_init': IsotropicGaussian(0.001),
         'biases_init': Constant(0.),
     }
     
@@ -123,6 +121,20 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     cost = (recons_term + kl_terms.sum(axis=0)).mean()
     cost.name = "nll_bound"
 
+    #------------------------------------------------------------
+    cg = ComputationGraph([cost])
+    params = VariableFilter(roles=[PARAMETER])(cg.variables)
+
+    algorithm = GradientDescent(
+        cost=cost, 
+        params=params,
+        step_rule=Adam(learning_rate)
+        #step_rule=RMSProp(learning_rate),
+        #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
+    )
+    algorithm.add_updates(scan_updates)
+
+
     #------------------------------------------------------------------------
     # Setup monitors
     monitors = [cost]
@@ -137,25 +149,17 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
 
         monitors +=[kl_term_t, recons_term_t]
 
+    train_monitors = monitors 
+    train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
+    train_monitors += [aggregation.mean(algorithm.total_step_norm)]
+
     # Live plotting...
     plot_channels = [
         ["train_nll_bound"],
         ["train_kl_term_%d" % t for t in range(n_iter)],
-        ["train_recons_term_%d" % t for t in range(n_iter)]
+        ["train_recons_term_%d" % t for t in range(n_iter)],
+        ["train_total_gradient_norm", "train_total_step_norm"]
     ]
-
-    #------------------------------------------------------------
-    cg = ComputationGraph([cost])
-    params = VariableFilter(roles=[PARAMETER])(cg.variables)
-
-    algorithm = GradientDescent(
-        cost=cost, 
-        params=params,
-        step_rule=Adam(learning_rate)
-        #step_rule=RMSProp(learning_rate),
-        #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
-    )
-    algorithm.add_updates(scan_updates)
 
     #------------------------------------------------------------
 
@@ -181,7 +185,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
             #        mnist_test.num_examples, batch_size)),
             #        prefix="test"),
             TrainingDataMonitoring(
-                monitors, 
+                train_monitors, 
                 prefix="train",
                 after_every_epoch=True),
             SerializeMainLoop(name+".pkl"),
