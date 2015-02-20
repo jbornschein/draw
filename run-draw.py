@@ -16,9 +16,6 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-#from fuel.streams import DataStream
-#from fuel.schemes import SequentialScheme
-#from fuel.datasets.mnist import MNIST, BinarizedMNIST
 from blocks.datasets.streams import DataStream
 from blocks.datasets.schemes import SequentialScheme
 from blocks.datasets.mnist import MNIST 
@@ -35,113 +32,11 @@ from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 
-from blocks.bricks.base import application, _Brick, Brick, lazy
-from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
 from blocks.bricks.cost import BinaryCrossEntropy
 
 from lib.progress_extension import ProgressBar
 
-
-#-----------------------------------------------------------------------------
-
-class RNN(Initializable):
-    def __init__(self, state_dim, input_dim, **kwargs):
-        super(RNN, self).__init__(**kwargs)
-
-        transform_dim = state_dim + input_dim
-
-        self.transform = Linear(
-                name=self.name+"_transform",
-                input_dim=transform_dim, output_dim=state_dim, 
-                weights_init=self.weights_init, biases_init=self.biases_init,
-                use_bias=True)
- 
-        self.children = [self.transform]
-        
-    #@application(inputs=['old_state', 'rnn_input'], outputs=['new_state'])
-    def apply(self, state, new_input):
-        t = T.concatenate([state, new_input], axis=1)
-        return T.tanh(self.transform.apply(t))
-
-
-class Qsampler(Initializable, Random):
-    def __init__(self, input_dim, output_dim, hidden_dim=None, **kwargs):
-        super(Qsampler, self).__init__(**kwargs)
-
-        if hidden_dim is None:
-            hidden_dim = (input_dim+output_dim) // 2
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-        self.hidden_dim = hidden_dim
-
-        self.h_transform = Linear(
-                name=self.name+'_h',
-                input_dim=input_dim, output_dim=hidden_dim, 
-                weights_init=self.weights_init, biases_init=self.biases_init,
-                use_bias=True)
-        self.mean_transform = Linear(
-                name=self.name+'_mean',
-                input_dim=hidden_dim, output_dim=output_dim, 
-                weights_init=self.weights_init, biases_init=self.biases_init,
-                use_bias=True)
-        self.ls_transform = Linear(
-                name=self.name+'_log_sigma',
-                input_dim=hidden_dim, output_dim=output_dim, 
-                weights_init=self.weights_init, biases_init=self.biases_init,
-                use_bias=True)
-
-        self.children = [self.h_transform, 
-                         self.mean_transform,
-                         self.ls_transform]
-    
-    #@application(inputs=['x'], outputs=['mean', 'log_sigma', 'z'])
-    def apply(self, x):
-        h = T.tanh(self.h_transform.apply(x))
-        mean = self.mean_transform.apply(h)
-        log_sigma = self.mean_transform.apply(h)
-
-        # Sample from mean-zeros std.-one Gaussian
-        U = self.theano_rng.normal(
-                    size=mean.shape, 
-                    avg=0., std=1.)
-
-        # ... and scale/translate samples
-        z = mean + tensor.exp(log_sigma) * U
-
-        return mean, log_sigma, z
-
-
-class Reader(Initializable):
-    def __init__(self, x_dim, dec_dim, **kwargs):
-        super(Reader, self).__init__(name="reader", **kwargs)
-
-        self.x_dim = x_dim
-        self.dec_dim = dec_dim
-        self.output_dim = 2*x_dim
-            
-    @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['r'])
-    def apply(self, x, x_hat, h_dec):
-        return T.concatenate([x, x_hat], axis=1)
-
-
-class Writer(Initializable):
-    def __init__(self, input_dim, output_dim, **kwargs):
-        super(Writer, self).__init__(name="writer", **kwargs)
-
-        self.input_dim = input_dim
-        self.output_dim = output_dim
-
-        self.transform = Linear(
-                name=self.name+'_transform',
-                input_dim=input_dim, output_dim=output_dim, 
-                weights_init=self.weights_init, biases_init=self.biases_init,
-                use_bias=True)
-
-        self.children = [self.transform]
-
-    @application(inputs=['h'], outputs=['c_update'])
-    def apply(self, h):
-        return self.transform.apply(h)
+from draw import *
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, n_iter ):
@@ -154,7 +49,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
     read_dim = 2*x_dim
     enc_dim = 200
     dec_dim = 200
-    z_dim = 50
+    z_dim = 100
     
     inits = {
         #'weights_init': Orthogonal(),
@@ -172,7 +67,6 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
     decoder = RNN(name="RNN_dec", state_dim=dec_dim, input_dim=z_dim, **inits)
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
         
-
     for brick in [reader, writer, encoder, decoder, q_sampler]:
         brick.initialize()
 
@@ -198,42 +92,54 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             T.zeros([batch_size, dec_dim]),   # h_dec
         ]
     
-
-    # Sample from mean-zeros std.-one Gaussian
-    #U = q_sampler.theano_rng.normal(
-    #            size=(n_iter, batch_size, z_dim),
-    #            avg=0., std=1.)
-
-    outputs, updates = theano.scan(fn=one_iteration, 
-                            sequences=[],
-                            outputs_info=outputs_info,
-                            non_sequences=[x],
-                            n_steps=n_iter)
+    outputs, scan_updates = theano.scan(fn=one_iteration, 
+                                sequences=[],
+                                outputs_info=outputs_info,
+                                non_sequences=[x],
+                                n_steps=n_iter)
 
     c, h_enc, z_mean, z_log_sigma, z, h_dec = outputs
 
-    kl_term = (
+    kl_terms = (
         prior_log_sigma - z_log_sigma
         + 0.5 * (
             tensor.exp(2 * z_log_sigma) + (z_mean - prior_mu) ** 2
         ) / tensor.exp(2 * prior_log_sigma)
         - 0.5
-    ).sum(axis=0).sum(axis=1)
-    kl_term.name = "kl_term"
+    ).sum(axis=-1)
     
     x_hat = T.nnet.sigmoid(c[-1,:,:])
     recons_term = BinaryCrossEntropy().apply(x, x_hat)
     recons_term.name = "recons_term"
 
-    cost = (recons_term + kl_term).mean()
+    cost = (recons_term + kl_terms.sum(axis=0)).mean()
     cost.name = "nll_bound"
+
+    #------------------------------------------------------------------------
+    # Setup monitors
+    monitors = [cost]
+    for t in range(n_iter):
+        kl_term_t = kl_terms[t,:].mean()
+        kl_term_t.name = "kl_term_%d" % t
+
+        x_hat_t = T.nnet.sigmoid(c[t,:,:])
+        recons_term_t = BinaryCrossEntropy().apply(x, x_hat_t)
+        recons_term_t = recons_term_t.mean()
+        recons_term_t.name = "recons_term_%d" % t
+
+        monitors +=[kl_term_t, recons_term_t]
+
+    # Live plotting...
+    plot_channels = [
+        ["train_nll_bound"],
+        ["train_kl_term_%d" % t for t in range(n_iter)],
+        ["train_recons_term_%d" % t for t in range(n_iter)]
+    ]
 
     #------------------------------------------------------------
     cg = ComputationGraph([cost])
     params = VariableFilter(roles=[PARAMETER])(cg.variables)
 
-    #ipdb.set_trace()
-    
     algorithm = GradientDescent(
         cost=cost, 
         params=params,
@@ -241,7 +147,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
-    algorithm.add_updates(updates)
+    algorithm.add_updates(scan_updates)
 
     #------------------------------------------------------------
 
@@ -258,24 +164,20 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
         algorithm=algorithm,
         extensions=[
             Timing(),
-            ProgressBar(),
+            #ProgressBar(),
             FinishAfter(after_n_epochs=epochs),
             #DataStreamMonitoring(
-            #    [cost],
+            #    monitors,
             #    DataStream(mnist_test,
             #        iteration_scheme=SequentialScheme(
             #        mnist_test.num_examples, batch_size)),
             #        prefix="test"),
             TrainingDataMonitoring(
-                [cost, aggregation.mean(algorithm.total_gradient_norm)],
+                monitors, 
                 prefix="train",
                 after_every_epoch=True),
             SerializeMainLoop(name+".pkl"),
-                Plot(
-                    name,
-                    channels=[
-                        [cost]
-                    ]),
+            Plot(name, channels=plot_channels),
             Printing()])
     main_loop.run()
 
@@ -292,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument("--niter", type=int, dest="n_iter",
                 default=5, help="No. of iterations")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
-                default=1e-3, help="Learning rate")
+                default=1e-4, help="Learning rate")
     args = parser.parse_args()
 
     main(**vars(args))
