@@ -42,10 +42,11 @@ from draw import *
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_dim):
     if name is None:
-        name = "mnist-enc%d-dec%d-z%d" % (enc_dim, dec_dim, z_dim)
+        name = "mnist-t%d-enc%d-dec%d-z%d" % (n_iter, enc_dim, dec_dim, z_dim)
 
     print("\nRunning experiment %s" % name)
     print("         learning rate: %5.3f" % learning_rate) 
+    print("          n_iterations: %d" % n_iter)
     print("     encoder dimension: %d" % enc_dim)
     print("           z dimension: %d" % z_dim)
     print("     decoder dimension: %d" % dec_dim)
