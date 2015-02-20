@@ -78,3 +78,9 @@ class ProgressBar(TrainingExtension):
             self.batch_counter += 1
             self.bar.update(self.batch_counter)
 
+    def __getstate__(self):
+        return (self.epoch_counter, self.batch_counter)
+
+    def __setstate__(self, state):
+        self.epoch_counter, self.batch_counter = state
+        self.bar = None

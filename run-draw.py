@@ -38,18 +38,26 @@ from lib.progress_extension import ProgressBar
 
 from draw import *
 
+
 #----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, n_iter ):
-    """ Run a Reweighted Wake Sleep experiment
-    """
+def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_dim):
+    """ Run a Reweighted Wake Sleep experiment """
+
+    if name is None:
+        name = "mnist-enc%d-dec%d-z%d" % (enc_dim, dec_dim, z_dim)
+
+    print("\nRunning experiment %s" % name)
+    print("         learning rate: %5.3f" % learning_rate) 
+    print("     encoder dimension: %d" % enc_dim)
+    print("           z dimension: %d" % z_dim)
+    print("     decoder dimension: %d" % dec_dim)
+    print()
+
 
     #------------------------------------------------------------------------
 
     x_dim = 28*28
     read_dim = 2*x_dim
-    enc_dim = 200
-    dec_dim = 200
-    z_dim = 100
     
     inits = {
         #'weights_init': Orthogonal(),
@@ -164,7 +172,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
         algorithm=algorithm,
         extensions=[
             Timing(),
-            #ProgressBar(),
+            ProgressBar(),
             FinishAfter(after_n_epochs=epochs),
             #DataStreamMonitoring(
             #    monitors,
@@ -186,15 +194,21 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist-run", help="Name for this experiment")
+                default=None, help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=25, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
                 default=100, help="Size of each mini-batch")
+    parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
+                default=1e-3, help="Learning rate")
     parser.add_argument("--niter", type=int, dest="n_iter",
                 default=5, help="No. of iterations")
-    parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
-                default=1e-4, help="Learning rate")
+    parser.add_argument("--enc-dim", type=int, dest="enc_dim",
+                default=200, help="Encoder RNN state dimension")
+    parser.add_argument("--dec-dim", type=int, dest="dec_dim",
+                default=200, help="Decoder  RNN state dimension")
+    parser.add_argument("--z-dim", type=int, dest="z_dim",
+                default=50, help="Z-vector dimension")
     args = parser.parse_args()
 
     main(**vars(args))
