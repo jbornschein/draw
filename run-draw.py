@@ -16,15 +16,16 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-from fuel.streams import DataStream
-from fuel.schemes import SequentialScheme
-from fuel.datasets.mnist import MNIST, BinarizedMNIST
+#from fuel.streams import DataStream
+#from fuel.schemes import SequentialScheme
+#from fuel.datasets.mnist import MNIST, BinarizedMNIST
+from blocks.datasets.mnist import MNIST 
 
-from blocks.algorithms import GradientDescent, Momentum, RMSProp, Adam
-from blocks.initialization import Uniform, IsotropicGaussian, Constant, Orthogonal 
+from blocks.algorithms import GradientDescent, RMSProp, Adam
+from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
-from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.graph import ComputationGraph
+from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing  #, ProgressBar
 from blocks.extensions.plot import Plot
@@ -37,6 +38,9 @@ from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializ
 from blocks.bricks.cost import BinaryCrossEntropy
 
 from progress_extension import ProgressBar
+
+
+#-----------------------------------------------------------------------------
 
 class RNN(Initializable):
     def __init__(self, state_dim, input_dim, **kwargs):
@@ -137,14 +141,12 @@ class Writer(Initializable):
     def apply(self, h):
         return self.transform.apply(h)
 
-#-----------------------------------------------------------------------------
+#----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, n_iter ):
     """ Run a Reweighted Wake Sleep experiment
     """
-    if name is None:
-        name = "bla"
 
-    #------------------------------------------------------------
+    #------------------------------------------------------------------------
 
     x_dim = 28*28
     read_dim = 2*x_dim
@@ -275,11 +277,12 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             Printing()])
     main_loop.run()
 
-if __name__ == "__main__":
+#-----------------------------------------------------------------------------
 
+if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default=None, help="Name for this experiment")
+                default="mnist-run", help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=25, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
