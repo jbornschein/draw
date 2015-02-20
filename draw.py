@@ -20,7 +20,7 @@ from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.mnist import MNIST, BinarizedMNIST
 
-from blocks.algorithms import GradientDescent, Momentum, RMSProp
+from blocks.algorithms import GradientDescent, Momentum, RMSProp, Adam
 from blocks.initialization import Uniform, IsotropicGaussian, Constant, Orthogonal 
 from blocks.filter import VariableFilter
 from blocks.roles import WEIGHTS, BIASES, PARAMETER
@@ -233,8 +233,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
     algorithm = GradientDescent(
         cost=cost, 
         params=params,
-        step_rule=RMSProp(learning_rate),
-        #step_rule=Adam()
+        step_rule=Adam(learning_rate)
+        #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
     algorithm.add_updates(updates)
@@ -257,13 +257,13 @@ def main(name, epochs, batch_size, learning_rate, n_iter ):
             ProgressBar(),
             FinishAfter(after_n_epochs=epochs),
             #DataStreamMonitoring(
-            #    cost,
+            #    [cost],
             #    DataStream(mnist_test,
             #        iteration_scheme=SequentialScheme(
             #        mnist_test.num_examples, batch_size)),
             #        prefix="test"),
             TrainingDataMonitoring(
-                [cost],   #+[aggregation.mean(algorithm.total_gradient_norm)],
+                [cost, aggregation.mean(algorithm.total_gradient_norm)],
                 prefix="train",
                 after_every_epoch=True),
             SerializeMainLoop(name+".pkl"),
@@ -281,13 +281,13 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
-                default=100, help="Number of training epochs to do")
+                default=25, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
                 default=100, help="Size of each mini-batch")
     parser.add_argument("--niter", type=int, dest="n_iter",
-                default=10, help="No. of iterations")
+                default=5, help="No. of iterations")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
-                default=3e-5, help="Learning rate")
+                default=1e-3, help="Learning rate")
     args = parser.parse_args()
 
     main(**vars(args))
