@@ -20,7 +20,7 @@ from blocks.datasets.streams import DataStream
 from blocks.datasets.schemes import SequentialScheme
 from blocks.datasets.mnist import MNIST 
 
-from blocks.algorithms import GradientDescent, RMSProp, Adam
+from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
@@ -128,7 +128,10 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     algorithm = GradientDescent(
         cost=cost, 
         params=params,
-        step_rule=Adam(learning_rate)
+        step_rule=CompositeRule([
+            StepClipping(1000.), 
+            Adam(learning_rate)
+        ])
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
