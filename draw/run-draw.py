@@ -26,15 +26,13 @@ from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.monitoring import aggregation
-from blocks.extensions import FinishAfter, Timing, Printing  #, ProgressBar
+from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.plot import Plot
 from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 
 from blocks.bricks.cost import BinaryCrossEntropy
-
-from lib.progress_extension import ProgressBar
 
 from draw import *
 
@@ -115,8 +113,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         - 0.5
     ).sum(axis=-1)
     
-    x_hat = T.nnet.sigmoid(c[-1,:,:])
-    recons_term = BinaryCrossEntropy().apply(x, x_hat)
+    x_recons = T.nnet.sigmoid(c[-1,:,:])
+    recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
 
     cost = (recons_term + kl_terms.sum(axis=0)).mean()
@@ -146,8 +144,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         kl_term_t = kl_terms[t,:].mean()
         kl_term_t.name = "kl_term_%d" % t
 
-        x_hat_t = T.nnet.sigmoid(c[t,:,:])
-        recons_term_t = BinaryCrossEntropy().apply(x, x_hat_t)
+        x_recons_t = T.nnet.sigmoid(c[t,:,:])
+        recons_term_t = BinaryCrossEntropy().apply(x, x_recons_t)
         recons_term_t = recons_term_t.mean()
         recons_term_t.name = "recons_term_%d" % t
 
@@ -180,7 +178,6 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         algorithm=algorithm,
         extensions=[
             Timing(),
-            ProgressBar(),
             FinishAfter(after_n_epochs=epochs),
             #DataStreamMonitoring(
             #    monitors,
@@ -194,6 +191,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
                 after_every_epoch=True),
             SerializeMainLoop(name+".pkl"),
             Plot(name, channels=plot_channels),
+            ProgressBar(),
             Printing()])
     main_loop.run()
 
