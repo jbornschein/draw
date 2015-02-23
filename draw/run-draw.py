@@ -32,7 +32,9 @@ from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 
+from blocks.bricks import Tanh
 from blocks.bricks.cost import BinaryCrossEntropy
+from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
 from draw import *
 
@@ -62,15 +64,18 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         'biases_init': Constant(0.),
     }
     
-
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
     reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
-    writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
-    encoder = RNN(name="RNN_enc", state_dim=enc_dim, input_dim=(read_dim+dec_dim), **inits)
-    decoder = RNN(name="RNN_dec", state_dim=dec_dim, input_dim=z_dim, **inits)
+    encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
+    #encoder = SimpleRecurrent(dim=enc_dim, activation=Tanh(), name="RNN_enc", **inits)
+    encoder = LSTM(dim=enc_dim, name="RNN_enc", **inits)
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
+    decoder_mlp = MLP([Tanh()], [z_dim, 4*enc_dim], name="MLP_dec", **inits)
+    #decoder = SimpleRecurrent(dim=dec_dim, activation=Tanh(), name="RNN_dec", **inits)
+    decoder = LSTM(dim=dec_dim, name="RNN_dec", **inits)
+    writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
         
     for brick in [reader, writer, encoder, decoder, q_sampler]:
         brick.initialize()
@@ -78,23 +83,39 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
 
+    """
     # This is one iteration 
     def one_iteration(c, h_enc, z_mean, z_log_sigma, z, h_dec, x):
         x_hat = x-T.nnet.sigmoid(c)
         r = reader.apply(x, x_hat, h_dec)
-        h_enc = encoder.apply(h_enc, T.concatenate([r, h_dec], axis=1))
+        h_enc = encoder.apply(h_enc, T.concatenate([r, h_dec], axis=1), iterate=False)
         z_mean, z_log_sigma, z = q_sampler.apply(h_enc)
-        h_dec = decoder.apply(h_dec, z)
+        h_dec = decoder.apply(h_dec, z, iterate=False)
         c = c + writer.apply(h_dec)
         return c, h_enc, z_mean, z_log_sigma, z, h_dec
+    """
+
+    # This is one iteration 
+    def one_iteration(c, h_enc, c_enc, z_mean, z_log_sigma, z, h_dec, c_dec, x):
+        x_hat = x-T.nnet.sigmoid(c)
+        r = reader.apply(x, x_hat, h_dec)
+        i_enc = encoder_mlp.apply(T.concatenate([r, h_dec], axis=1))
+        h_enc, c_enc = encoder.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
+        z_mean, z_log_sigma, z = q_sampler.apply(h_enc)
+        i_dec = decoder_mlp.apply(z)
+        h_dec, c_dec = decoder.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
+        c = c + writer.apply(h_dec)
+        return c, h_enc, c_enc, z_mean, z_log_sigma, z, h_dec, c_dec
 
     outputs_info = [
             T.zeros([batch_size, x_dim]),     # c
             T.zeros([batch_size, enc_dim]),   # h_enc
+            T.zeros([batch_size, enc_dim]),   # c_enc
             T.zeros([batch_size, z_dim]),     # z_mean
             T.zeros([batch_size, z_dim]),     # z_log_sigma
             T.zeros([batch_size, z_dim]),     # z
             T.zeros([batch_size, dec_dim]),   # h_dec
+            T.zeros([batch_size, dec_dim]),   # c_dec
         ]
     
     outputs, scan_updates = theano.scan(fn=one_iteration, 
@@ -103,7 +124,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
                                 non_sequences=[x],
                                 n_steps=n_iter)
 
-    c, h_enc, z_mean, z_log_sigma, z, h_dec = outputs
+    c, h_enc, c_enc, z_mean, z_log_sigma, z, h_dec, c_dec = outputs
 
     kl_terms = (
         prior_log_sigma - z_log_sigma
@@ -151,7 +172,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
 
         monitors +=[kl_term_t, recons_term_t]
 
-    train_monitors = monitors 
+    train_monitors = monitors[:]
     train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
     train_monitors += [aggregation.mean(algorithm.total_step_norm)]
 
@@ -179,12 +200,13 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         extensions=[
             Timing(),
             FinishAfter(after_n_epochs=epochs),
-            #DataStreamMonitoring(
-            #    monitors,
-            #    DataStream(mnist_test,
-            #        iteration_scheme=SequentialScheme(
-            #        mnist_test.num_examples, batch_size)),
-            #        prefix="test"),
+            DataStreamMonitoring(
+                monitors,
+                DataStream(mnist_test,
+                    iteration_scheme=SequentialScheme(
+                    mnist_test.num_examples, batch_size)),
+                updates=scan_updates, 
+                prefix="test"),
             TrainingDataMonitoring(
                 train_monitors, 
                 prefix="train",
