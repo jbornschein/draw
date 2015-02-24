@@ -67,6 +67,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
+    attention = True
     if attention:
         read_N = 4
         write_N = 6
@@ -150,7 +151,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         cost=cost, 
         params=params,
         step_rule=CompositeRule([
-            StepClipping(1000.), 
+            StepClipping(2.), 
             Adam(learning_rate)
         ])
         #step_rule=RMSProp(learning_rate),
