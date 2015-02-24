@@ -27,6 +27,17 @@ class ZoomableAttentionWindow(object):
     """
     """
     def __init__(self, img_height, img_width, N, normalize=False):
+        """
+        Parameters
+        ----------
+        img_heigt, img_width : int
+            shape of the images 
+        N : 
+            $N \times N$ attention window size
+        normalize : bool
+            If `True`, the center positions and `delta` for `read` and 
+            `write` are expected to be [0..1]. 
+        """
         self.normalize = normalize
         self.img_height = img_height
         self.img_width = img_width
@@ -191,23 +202,6 @@ def read(I, N, g, delta, sigma):
     #return FX, FY, I, batched_dot(FY, I)
     return batched_dot(batched_dot(FY, I), FX.transpose([0,2,1]))
 
-def write(C, W, g, delta, sigma):
-    N, _ = W.shape
-    sY, sX = C.shape
-
-    muY = gy + delta*(np.arange(N) - N/2. - .5)
-    muX = gx + delta*(np.arange(N) - N/2. - .5)
-    
-    a = np.arange(sX)
-    b = np.arange(sY)
-
-    FX = np.exp( - (a[None,:] - muX[:,None])**2 / 2. / sigma**2) 
-    FY = np.exp( - (b[None,:] - muY[:,None])**2 / 2. / sigma**2) 
-    FX /= FX.sum()
-    FY /= FY.sum()
- 
-    C += np.dot(np.dot(FY.T, W), FX)
-    return C
 
 if __name__ == "__main__":
     from PIL import Image

@@ -42,7 +42,7 @@ from draw import *
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_dim):
     if name is None:
-        name = "mnist-t%d-enc%d-dec%d-z%d" % (n_iter, enc_dim, dec_dim, z_dim)
+        name = "att-t%d-enc%d-dec%d-z%d" % (n_iter, enc_dim, dec_dim, z_dim)
 
     print("\nRunning experiment %s" % name)
     print("         learning rate: %5.3f" % learning_rate) 
@@ -55,8 +55,12 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
 
     #------------------------------------------------------------------------
 
+    read_N = 4
+    write_N = 6
+
     x_dim = 28*28
-    read_dim = 2*x_dim
+    #read_dim = 2*x_dim
+    read_dim = 2*read_N**2
     
     inits = {
         #'weights_init': Orthogonal(),
@@ -67,7 +71,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
-    reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
+    #reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
+    reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim, width=28, height=28, N=read_N, **inits)
     encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
     #encoder = SimpleRecurrent(dim=enc_dim, activation=Tanh(), name="RNN_enc", **inits)
     encoder = LSTM(dim=enc_dim, name="RNN_enc", **inits)
@@ -75,7 +80,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     decoder_mlp = MLP([Tanh()], [z_dim, 4*enc_dim], name="MLP_dec", **inits)
     #decoder = SimpleRecurrent(dim=dec_dim, activation=Tanh(), name="RNN_dec", **inits)
     decoder = LSTM(dim=dec_dim, name="RNN_dec", **inits)
-    writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
+    #writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
+    writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim, height=28, width=28, N=write_N, **inits)
         
     for brick in [reader, writer, encoder, decoder, q_sampler]:
         brick.initialize()
