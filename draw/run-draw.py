@@ -55,12 +55,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
 
     #------------------------------------------------------------------------
 
-    read_N = 4
-    write_N = 6
-
     x_dim = 28*28
-    #read_dim = 2*x_dim
-    read_dim = 2*read_N**2
+    img_height, img_width = (28, 28)
     
     inits = {
         #'weights_init': Orthogonal(),
@@ -71,35 +67,34 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
-    #reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
-    reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim, width=28, height=28, N=read_N, **inits)
-    encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
-    #encoder = SimpleRecurrent(dim=enc_dim, activation=Tanh(), name="RNN_enc", **inits)
+    if attention:
+        read_N = 4
+        write_N = 6
+        read_dim = 2*read_N**2
+
+        reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
+                                 width=img_width, height=img_height,
+                                 N=read_N, **inits)
+        writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
+                                 width=img_width, height=img_height,
+                                 N=read_N, **inits)
+    else:
+        read_dim = 2*x_dim
+
+        reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
+        writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
+
     encoder = LSTM(dim=enc_dim, name="RNN_enc", **inits)
-    q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
-    decoder_mlp = MLP([Tanh()], [z_dim, 4*enc_dim], name="MLP_dec", **inits)
-    #decoder = SimpleRecurrent(dim=dec_dim, activation=Tanh(), name="RNN_dec", **inits)
     decoder = LSTM(dim=dec_dim, name="RNN_dec", **inits)
-    #writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
-    writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim, height=28, width=28, N=write_N, **inits)
+    encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
+    decoder_mlp = MLP([Tanh()], [             z_dim, 4*dec_dim], name="MLP_dec", **inits)
+    q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
         
     for brick in [reader, writer, encoder, decoder, q_sampler]:
         brick.initialize()
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
-
-    """
-    # This is one iteration 
-    def one_iteration(c, h_enc, z_mean, z_log_sigma, z, h_dec, x):
-        x_hat = x-T.nnet.sigmoid(c)
-        r = reader.apply(x, x_hat, h_dec)
-        h_enc = encoder.apply(h_enc, T.concatenate([r, h_dec], axis=1), iterate=False)
-        z_mean, z_log_sigma, z = q_sampler.apply(h_enc)
-        h_dec = decoder.apply(h_dec, z, iterate=False)
-        c = c + writer.apply(h_dec)
-        return c, h_enc, z_mean, z_log_sigma, z, h_dec
-    """
 
     # This is one iteration 
     def one_iteration(c, h_enc, c_enc, z_mean, z_log_sigma, z, h_dec, c_dec, x):
