@@ -73,8 +73,8 @@ class ZoomableAttentionWindow(object):
         
         FX = tensor.exp( -(a-muX.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
         FY = tensor.exp( -(b-muY.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
-        FX = FX / FX.sum(axis=(-1, -2)).dimshuffle(0, 'x', 'x')
-        FY = FY / FY.sum(axis=(-1, -2)).dimshuffle(0, 'x', 'x')
+        FX = FX / FX.sum(axis=-1).dimshuffle(0, 1, 'x')
+        FY = FY / FY.sum(axis=-1).dimshuffle(0, 1, 'x')
 
         return FX, FY
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     width =  640
 
     #------------------------------------------------------------------------
-    att = ZoomableAttentionWindow(height, width, N, normalize=True)
+    att = ZoomableAttentionWindow(height, width, N, normalize=False)
 
     I_ = T.matrix()
     center_y_ = T.vector()
@@ -241,9 +241,11 @@ if __name__ == "__main__":
     I = np.asarray(I).reshape( (width*height) )
     I = I / 255.
 
-    center_y = 0.5 # 200
-    center_x = 0.5 # 330
-    delta = 0.3
+    #center_y = 0.5 # 200
+    #center_x = 0.5 # 330
+    center_y = 200.5
+    center_x = 330.5
+    delta = 5.
     sigma = 2.
 
     I, center_y, center_x, delta, sigma = \
@@ -257,14 +259,15 @@ if __name__ == "__main__":
     import pylab
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(I.reshape([height, width]), interpolation='nearest', vmin=0., vmax=1.)
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(W.reshape([N, N]), interpolation='nearest')
+    pylab.imshow(W.reshape([N, N]), interpolation='nearest', vmin=0., vmax=1.)
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I2.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(I2.reshape([height, width]), interpolation='nearest', vmin=0., vmax=1.)
     pylab.show(block=True)
     
+    import ipdb; ipdb.set_trace()

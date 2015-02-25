@@ -101,8 +101,8 @@ class AttentionReader(Initializable):
         log_sigma = l[:,3] / 2.
         log_gamma = l[:,4]
 
-        w     = self.zoomer.read(x    , center_y, center_x, T.exp(log_delta), T.exp(log_sigma))
-        w_hat = self.zoomer.read(x_hat, center_y, center_x, T.exp(log_delta), T.exp(log_sigma))
+        w     = self.zoomer.read(x    , center_y, center_x, T.exp(log_delta), log_sigma+1)
+        w_hat = self.zoomer.read(x_hat, center_y, center_x, T.exp(log_delta), log_sigma+1)
         
         gamma = T.exp(log_gamma).dimshuffle(0, 'x')
         return gamma * T.concatenate([w, w_hat], axis=1)

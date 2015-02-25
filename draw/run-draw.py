@@ -59,8 +59,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     img_height, img_width = (28, 28)
     
     inits = {
-        #'weights_init': Orthogonal(),
-        'weights_init': IsotropicGaussian(0.001),
+        'weights_init': Orthogonal(),
+        #'weights_init': IsotropicGaussian(0.001),
         'biases_init': Constant(0.),
     }
     
@@ -68,6 +68,7 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     prior_log_sigma = T.zeros([z_dim])
 
     attention = True
+    #attention = False
     if attention:
         read_N = 4
         write_N = 6
@@ -92,6 +93,8 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
         
     for brick in [reader, writer, encoder, decoder, q_sampler]:
+        brick.allocate()
+        #import ipdb; ipdb.set_trace()
         brick.initialize()
 
     #------------------------------------------------------------------------
