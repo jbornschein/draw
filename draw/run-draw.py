@@ -16,9 +16,13 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-from blocks.datasets.streams import DataStream
-from blocks.datasets.schemes import SequentialScheme
-from blocks.datasets.mnist import MNIST 
+#from blocks.datasets.streams import DataStream
+#from blocks.datasets.schemes import SequentialScheme
+#from blocks.datasets.mnist import MNIST
+
+from fuel.streams import DataStream
+from fuel.schemes import SequentialScheme
+from fuel.datasets.mnist import MNIST, BinarizedMNIST
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -144,7 +148,7 @@ def main(name, epochs, batch_size, learning_rate,
     recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
 
-    cost = (recons_term + kl_terms.sum(axis=0)).mean()
+    cost = recons_term + kl_terms.sum(axis=0).mean()
     cost.name = "nll_bound"
 
     #------------------------------------------------------------
@@ -192,10 +196,10 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    #mnist_train = BinarizedMNIST("train", sources=['features'])
-    #mnist_test = BinarizedMNIST("test", sources=['features'])
-    mnist_train = MNIST("train", binary=True, sources=['features'])
-    mnist_test = MNIST("test", binary=True, sources=['features'])
+    mnist_train = BinarizedMNIST("train", sources=['features'])
+    mnist_test = BinarizedMNIST("test", sources=['features'])
+    #mnist_train = MNIST("train", binary=True, sources=['features'])
+    #mnist_test = MNIST("test", binary=True, sources=['features'])
 
     main_loop = MainLoop(
         model=None,
