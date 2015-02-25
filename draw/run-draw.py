@@ -40,12 +40,16 @@ from draw import *
 
 
 #----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_dim):
+def main(name, epochs, batch_size, learning_rate, 
+         attention, n_iter, enc_dim, dec_dim, z_dim):
+    
     if name is None:
-        name = "att-t%d-enc%d-dec%d-z%d" % (n_iter, enc_dim, dec_dim, z_dim)
+        tag = "watt" if attention else "woatt"
+        name = "%s-t%d-enc%d-dec%d-z%d" % (tag, n_iter, enc_dim, dec_dim, z_dim)
 
     print("\nRunning experiment %s" % name)
     print("         learning rate: %5.3f" % learning_rate) 
+    print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
     print("     encoder dimension: %d" % enc_dim)
     print("           z dimension: %d" % z_dim)
@@ -67,8 +71,6 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
     prior_mu = T.zeros([z_dim])
     prior_log_sigma = T.zeros([z_dim])
 
-    attention = True
-    #attention = False
     if attention:
         read_N = 4
         write_N = 6
@@ -94,7 +96,6 @@ def main(name, epochs, batch_size, learning_rate, n_iter, enc_dim, dec_dim, z_di
         
     for brick in [reader, writer, encoder, decoder, q_sampler]:
         brick.allocate()
-        #import ipdb; ipdb.set_trace()
         brick.initialize()
 
     #------------------------------------------------------------------------
@@ -229,11 +230,13 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
-                default=25, help="Number of training epochs to do")
+                default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
                 default=100, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                 default=1e-3, help="Learning rate")
+    parser.add_argument("--attention", "-a", action="store_true",
+                help="Use attention mechanism")
     parser.add_argument("--niter", type=int, dest="n_iter",
                 default=5, help="No. of iterations")
     parser.add_argument("--enc-dim", type=int, dest="enc_dim",

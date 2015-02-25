@@ -10,7 +10,6 @@ from blocks.bricks.base import application, _Brick, Brick, lazy
 from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
 from blocks.bricks import Tanh, Identity
 
-
 from attention import ZoomableAttentionWindow
 
 #-----------------------------------------------------------------------------
