@@ -160,7 +160,9 @@ class ZoomableAttentionWindow(object):
 
         
 def read(I, N, g, delta, sigma):
-    """Readout (scaled) windows of NxN pixels from the images I
+    """Readout (scaled) windows of NxN pixels from the images I.
+
+    NumPy version.
 
     Parameters
     ----------
@@ -181,6 +183,7 @@ def read(I, N, g, delta, sigma):
     -------
         
     """
+    tol = 1e-4
     batch_size, sY, sX = I.shape
 
     gx = g[:,1]
@@ -196,8 +199,8 @@ def read(I, N, g, delta, sigma):
     FY = np.exp( - (b[None, None,:] - muY[:,:,None])**2 / 2. / sigma[:,None,None]**2)
 
     #import ipdb; ipdb.set_trace()
-    FX = FX / FX.sum(axis=(1, 2))[:, None, None]
-    FY = FY / FY.sum(axis=(1, 2))[:, None, None]
+    FX = FX / (FX.sum(axis=(1, 2))[:, None, None] + tol)
+    FY = FY / (FY.sum(axis=(1, 2))[:, None, None] + tol)
     
     #return FX, FY, I, batched_dot(FY, I)
     return batched_dot(batched_dot(FY, I), FX.transpose([0,2,1]))
