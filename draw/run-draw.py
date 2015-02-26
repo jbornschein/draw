@@ -9,6 +9,7 @@ DATEFMT = "%H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
 import ipdb
+import fuel
 import theano
 import theano.tensor as T
 
@@ -20,9 +21,9 @@ from theano import tensor
 #from blocks.datasets.schemes import SequentialScheme
 #from blocks.datasets.mnist import MNIST
 
-from fuel.streams import DataStream
+from fuel.streams import DataStream, ForceFloatX
 from fuel.schemes import SequentialScheme
-from fuel.datasets.mnist import MNIST, BinarizedMNIST
+from fuel.datasets.binarized_mnist import BinarizedMNIST
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -42,6 +43,8 @@ from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
 from draw import *
 
+
+fuel.config.floatX = theano.config.floatX
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
@@ -165,8 +168,8 @@ def main(name, epochs, batch_size, learning_rate,
         cost=cost, 
         params=params,
         step_rule=CompositeRule([
+            #StepClipping(3.), 
             Adam(learning_rate),
-            StepClipping(3.), 
         ])
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
@@ -209,18 +212,18 @@ def main(name, epochs, batch_size, learning_rate,
 
     main_loop = MainLoop(
         model=None,
-        data_stream=DataStream(mnist_train,
+        data_stream=ForceFloatX(DataStream(mnist_train,
                         iteration_scheme=SequentialScheme(
-                        mnist_train.num_examples, batch_size)),
+                        mnist_train.num_examples, batch_size))),
         algorithm=algorithm,
         extensions=[
             Timing(),
             FinishAfter(after_n_epochs=epochs),
             DataStreamMonitoring(
                 monitors,
-                DataStream(mnist_test,
+                ForceFloatX(DataStream(mnist_test,
                     iteration_scheme=SequentialScheme(
-                    mnist_test.num_examples, batch_size)),
+                    mnist_test.num_examples, batch_size))),
                 updates=scan_updates, 
                 prefix="test"),
             TrainingDataMonitoring(
