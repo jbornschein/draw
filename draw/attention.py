@@ -12,14 +12,20 @@ from theano import tensor
 #-----------------------------------------------------------------------------
 
 def batched_dot(A, B):
-    return (A[:,:,:,None]*B[:,None,:,:]).sum(axis=-2)
+    """Batched version of dot-product.
 
-def f_batched_dot(A, B):
+    For A[dim_1, dim_2, dim_3] and B[dim_1, dim_3, dim_4] this 
+    is \approx equal to:
+        
+    for i in range(dim_1):
+        C[i] = tensor.dot(A, B)
+
+    Returns
+    -------
+        C : shape (dim_1 \times dim_2 \times dim_4)
+    """
     C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])
     return C.sum(axis=-2)
-
-def vectorize(*args):
-    return [a.reshape((1,)+a.shape) for a in args]
 
 #-----------------------------------------------------------------------------
 
@@ -36,7 +42,8 @@ class ZoomableAttentionWindow(object):
             $N \times N$ attention window size
         normalize : bool
             If `True`, the center positions and `delta` for `read` and 
-            `write` are expected to be [0..1]. 
+            `write` operations are expected to be [0..1]. 
+            If `False` the units are pixels.
         """
         self.normalize = normalize
         self.img_height = img_height
@@ -58,6 +65,7 @@ class ZoomableAttentionWindow(object):
         -------
             FX, FY 
         """
+        tol = 1e-4
         N = self.N
 
         if self.normalize:
@@ -73,8 +81,8 @@ class ZoomableAttentionWindow(object):
         
         FX = tensor.exp( -(a-muX.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
         FY = tensor.exp( -(b-muY.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
-        FX = FX / FX.sum(axis=-1).dimshuffle(0, 1, 'x')
-        FY = FY / FY.sum(axis=-1).dimshuffle(0, 1, 'x')
+        FX = FX / (FX.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
+        FY = FY / (FY.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
         return FX, FY
 
@@ -91,7 +99,7 @@ class ZoomableAttentionWindow(object):
         delta : T.vector    (shape: batch_size)
         sigma : T.vector    (shape: batch_size)
 
-        returns
+        Returns
         -------
         window : T.matrix   (shape: batch_size x N**2)
         """
@@ -105,7 +113,7 @@ class ZoomableAttentionWindow(object):
         FX, FY = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
         # Apply to the batch of images
-        W = f_batched_dot(f_batched_dot(FY, I), FX.transpose([0,2,1]))
+        W = batched_dot(batched_dot(FY, I), FX.transpose([0,2,1]))
 
         return W.reshape((batch_size, N*N))
 
@@ -121,89 +129,9 @@ class ZoomableAttentionWindow(object):
         FX, FY = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
         # Apply...
-        I = f_batched_dot(f_batched_dot(FY.transpose([0,2,1]), W), FX)
+        I = batched_dot(batched_dot(FY.transpose([0,2,1]), W), FX)
 
         return I.reshape( (batch_size, self.img_height*self.img_width) )
-
-        """
-        gx = g[:,1]
-        gy = g[:,0]
-
-        #image = image.reshape( (batch_size, self.size_y, self.size_x) )
-
-        gx = tensor.shape_padright(gx)
-        gy = tensor.shape_padright(gy)
-        delta = tensor.shape_padright(delta)
-
-        muX = gx + delta * (tensor.arange(N) - N/2 - 0.5)
-        muY = gy + delta * (tensor.arange(N) - N/2 - 0.5)
-        
-        a = tensor.arange(self.size_x)
-        b = tensor.arange(self.size_y)
-
-        muX = tensor.shape_padright(muX)
-        muY = tensor.shape_padright(muY)
-        
-        sigma = tensor.shape_padright(sigma, 2)
-        FX = tensor.exp( -(a-muX)**2 / 2. / sigma**2 )
-        FY = tensor.exp( -(b-muY)**2 / 2. / sigma**2 )
-        FX = FX / FX.sum(axis=(-1, -2)).dimshuffle(0, 'x', 'x')
-        FY = FY / FY.sum(axis=(-1, -2)).dimshuffle(0, 'x', 'x')
-
-        #W = f_batched_dot(FY, image)
-        #return W
-
-        W = f_batched_dot(f_batched_dot(FY, image), FX.transpose([0,2,1]))
-        return W
-        return W.reshape((batch_size, N*N))
-        """
-
-        
-def read(I, N, g, delta, sigma):
-    """Readout (scaled) windows of NxN pixels from the images I.
-
-    NumPy version.
-
-    Parameters
-    ----------
-        I : numpy.ndarray (shape: (batch_size, height, width) )
-            batch of input images
-        N : int  
-            $N \times N$ will be the size of the returned extracted 
-            attention window
-        g : numpy.ndarray of shape (batch_size, 2)
-            $g_y, $g_x$ represent the center position where to place the
-            attention window
-        delta : numpy.ndarray of shape (batch_size,)
-            distance between the attention window pixels
-        width : numpy.ndarray of shape (batch_size,)
-            
-        
-    Returns
-    -------
-        
-    """
-    tol = 1e-4
-    batch_size, sY, sX = I.shape
-
-    gx = g[:,1]
-    gy = g[:,0]
-
-    muX = gx[:,None] + delta[:,None]*(np.arange(N)[None,:] - N/2. - .5)
-    muY = gy[:,None] + delta[:,None]*(np.arange(N)[None,:] - N/2. - .5)
-    
-    a = np.arange(sX)
-    b = np.arange(sY)
-
-    FX = np.exp( - (a[None, None,:] - muX[:,:,None])**2 / 2. / sigma[:,None,None]**2) 
-    FY = np.exp( - (b[None, None,:] - muY[:,:,None])**2 / 2. / sigma[:,None,None]**2)
-
-    #import ipdb; ipdb.set_trace()
-    FX = FX / (FX.sum(axis=(1, 2))[:, None, None] + tol)
-    FY = FY / (FY.sum(axis=(1, 2))[:, None, None] + tol)
-    
-    #return FX, FY, I, batched_dot(FY, I)
-    return batched_dot(batched_dot(FY, I), FX.transpose([0,2,1]))
 
 
 if __name__ == "__main__":
@@ -251,6 +179,9 @@ if __name__ == "__main__":
     delta = 5.
     sigma = 2.
 
+    def vectorize(*args):
+        return [a.reshape((1,)+a.shape) for a in args]
+
     I, center_y, center_x, delta, sigma = \
         vectorize(I, np.array(center_y), np.array(center_x), np.array(delta), np.array(sigma))
 
@@ -262,15 +193,15 @@ if __name__ == "__main__":
     import pylab
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I.reshape([height, width]), interpolation='nearest', vmin=0., vmax=1.)
+    pylab.imshow(I.reshape([height, width]), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(W.reshape([N, N]), interpolation='nearest', vmin=0., vmax=1.)
+    pylab.imshow(W.reshape([N, N]), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I2.reshape([height, width]), interpolation='nearest', vmin=0., vmax=1.)
+    pylab.imshow(I2.reshape([height, width]), interpolation='nearest')
     pylab.show(block=True)
     
     import ipdb; ipdb.set_trace()
