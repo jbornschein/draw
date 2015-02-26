@@ -66,9 +66,14 @@ def main(name, epochs, batch_size, learning_rate,
     x_dim = 28*28
     img_height, img_width = (28, 28)
     
-    inits = {
+    rnninits = {
         'weights_init': Orthogonal(),
         #'weights_init': IsotropicGaussian(0.001),
+        'biases_init': Constant(0.),
+    }
+    inits = {
+        'weights_init': Orthogonal(),
+        #'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
     
@@ -92,13 +97,14 @@ def main(name, epochs, batch_size, learning_rate,
         reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
 
-    encoder = LSTM(dim=enc_dim, name="RNN_enc", **inits)
-    decoder = LSTM(dim=dec_dim, name="RNN_dec", **inits)
+    encoder = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
+    decoder = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
     encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
     decoder_mlp = MLP([Tanh()], [             z_dim, 4*dec_dim], name="MLP_dec", **inits)
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
         
-    for brick in [reader, writer, encoder, decoder, q_sampler]:
+    for brick in [reader, writer, encoder, decoder, 
+                  encoder_mlp, decoder_mlp, q_sampler]:
         brick.allocate()
         brick.initialize()
 
@@ -159,8 +165,8 @@ def main(name, epochs, batch_size, learning_rate,
         cost=cost, 
         params=params,
         step_rule=CompositeRule([
-            StepClipping(2.), 
-            Adam(learning_rate)
+            Adam(learning_rate),
+            StepClipping(3.), 
         ])
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
@@ -188,7 +194,7 @@ def main(name, epochs, batch_size, learning_rate,
 
     # Live plotting...
     plot_channels = [
-        ["train_nll_bound"],
+        ["train_nll_bound", "test_nll_bound"],
         ["train_kl_term_%d" % t for t in range(n_iter)],
         ["train_recons_term_%d" % t for t in range(n_iter)],
         ["train_total_gradient_norm", "train_total_step_norm"]
@@ -242,13 +248,13 @@ if __name__ == "__main__":
     parser.add_argument("--attention", "-a", action="store_true",
                 help="Use attention mechanism")
     parser.add_argument("--niter", type=int, dest="n_iter",
-                default=5, help="No. of iterations")
+                default=10, help="No. of iterations")
     parser.add_argument("--enc-dim", type=int, dest="enc_dim",
-                default=200, help="Encoder RNN state dimension")
+                default=256, help="Encoder RNN state dimension")
     parser.add_argument("--dec-dim", type=int, dest="dec_dim",
-                default=200, help="Decoder  RNN state dimension")
+                default=256, help="Decoder  RNN state dimension")
     parser.add_argument("--z-dim", type=int, dest="z_dim",
-                default=50, help="Z-vector dimension")
+                default=100, help="Z-vector dimension")
     args = parser.parse_args()
 
     main(**vars(args))
