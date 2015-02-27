@@ -66,13 +66,13 @@ def main(name, epochs, batch_size, learning_rate,
     img_height, img_width = (28, 28)
     
     rnninits = {
-        'weights_init': Orthogonal(),
-        #'weights_init': IsotropicGaussian(0.001),
+        #'weights_init': Orthogonal(),
+        'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
     inits = {
-        'weights_init': Orthogonal(),
-        #'weights_init': IsotropicGaussian(0.01),
+        #'weights_init': Orthogonal(),
+        'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
     
