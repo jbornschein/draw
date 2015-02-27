@@ -9,6 +9,7 @@ DATEFMT = "%H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
 import ipdb
+import fuel
 import theano
 import theano.tensor as T
 
@@ -16,9 +17,9 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-from blocks.datasets.streams import DataStream
-from blocks.datasets.schemes import SequentialScheme
-from blocks.datasets.mnist import MNIST 
+from fuel.streams import DataStream, ForceFloatX
+from fuel.schemes import SequentialScheme
+from fuel.datasets.binarized_mnist import BinarizedMNIST
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam, RemoveNotFinite
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -38,6 +39,8 @@ from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
 from draw import *
 from attention import ZoomableAttentionWindow
+
+fuel.config.floatX = theano.config.floatX
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate):
@@ -67,40 +70,43 @@ def main(name, epochs, batch_size, learning_rate):
     reader = ZoomableAttentionWindow(img_height, img_width,  read_N, normalize=True)
     writer = ZoomableAttentionWindow(img_height, img_width, write_N, normalize=True)
 
-    mlp0 = MLP(activations=[Tanh(), Identity()], dims=[    x_dim,  20,          5], **inits)
-    mlp1 = MLP(activations=[Tanh(), Identity()], dims=[read_N**2, 200, write_N**2], **inits)
-    mlp2 = MLP(activations=[Tanh(), Identity()], dims=[read_N**2, 300,          5], **inits)
+    # Parameterize the attention reader and writer
+    mlpr = MLP(activations=[Tanh(), Identity()], dims=[    x_dim,  50,         5], **inits)
+    mlpw = MLP(activations=[Tanh(), Identity()], dims=[    x_dim,  50,         5], **inits)
 
-    for brick in [mlp0, mlp1, mlp2]:
+    # MLP between the reader and writer
+    mlp = MLP(activations=[Tanh(), Identity()], dims=[read_N**2, 300, write_N**2], **inits)
+
+    for brick in [mlpr, mlpw, mlp]:
         brick.allocate()
         brick.initialize()
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
 
-    h0 = mlp0.apply(x)
+    hr = mlpr.apply(x)
+    hw = mlpw.apply(x)
 
-    center_y  = (h0[:,0] + 1.) / 2.
-    center_x  = (h0[:,1] + 1.) / 2.
-    delta = T.exp(h0[:,2])
-    sigma = T.exp(h0[:,3] / 2.)
-    gamma = T.exp(h0[:,4]).dimshuffle(0, 'x')
+    center_y  = (hr[:,0] + 1.) / 2.
+    center_x  = (hr[:,1] + 1.) / 2.
+    delta = T.exp(hr[:,2])
+    sigma = T.exp(hr[:,3] / 2.)
+    gamma = T.exp(hr[:,4]).dimshuffle(0, 'x')
 
     r = reader.read(x, center_y, center_x, delta, sigma)
 
-    h1 = mlp1.apply(r)
-    h2 = mlp2.apply(r)
+    h = mlp.apply(r)
 
-    center_y  = (h2[:,0] + 1.) / 2.
-    center_x  = (h2[:,1] + 1.) / 2.
-    delta = T.exp(h2[:,2])
-    sigma = T.exp(h2[:,3] / 2.)
-    gamma = T.exp(h2[:,4]).dimshuffle(0, 'x')
+    center_y  = (hw[:,0] + 1.) / 2.
+    center_x  = (hw[:,1] + 1.) / 2.
+    delta = T.exp(hw[:,2])
+    sigma = T.exp(hw[:,3] / 2.)
+    gamma = T.exp(hw[:,4]).dimshuffle(0, 'x')
 
-    c = writer.write(h1, center_y, center_x, delta, sigma) / gamma
+    c = writer.write(h, center_y, center_x, delta, sigma) / gamma
     x_recons = T.nnet.sigmoid(c)
 
-    cost = BinaryCrossEntropy().apply(x, x_recons).mean()
+    cost = BinaryCrossEntropy().apply(x, x_recons)
     cost.name = "cost"
 
     #------------------------------------------------------------
@@ -140,25 +146,25 @@ def main(name, epochs, batch_size, learning_rate):
 
     #------------------------------------------------------------
 
-    #mnist_train = BinarizedMNIST("train", sources=['features'])
-    #mnist_test = BinarizedMNIST("test", sources=['features'])
-    mnist_train = MNIST("train", binary=True, sources=['features'])
-    mnist_test = MNIST("test", binary=True, sources=['features'])
+    mnist_train = BinarizedMNIST("train", sources=['features'])
+    mnist_test = BinarizedMNIST("test", sources=['features'])
+    #mnist_train = MNIST("train", binary=True, sources=['features'])
+    #mnist_test = MNIST("test", binary=True, sources=['features'])
 
     main_loop = MainLoop(
         model=None,
-        data_stream=DataStream(mnist_train,
+        data_stream=ForceFloatX(DataStream(mnist_train,
                         iteration_scheme=SequentialScheme(
-                        mnist_train.num_examples, batch_size)),
+                        mnist_train.num_examples, batch_size))),
         algorithm=algorithm,
         extensions=[
             Timing(),
             FinishAfter(after_n_epochs=epochs),
             DataStreamMonitoring(
                 monitors,
-                DataStream(mnist_test,
+                ForceFloatX(DataStream(mnist_test,
                     iteration_scheme=SequentialScheme(
-                    mnist_test.num_examples, batch_size)),
+                    mnist_test.num_examples, batch_size))),
                 prefix="test"),
             TrainingDataMonitoring(
                 train_monitors, 

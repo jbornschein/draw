@@ -17,10 +17,6 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-#from blocks.datasets.streams import DataStream
-#from blocks.datasets.schemes import SequentialScheme
-#from blocks.datasets.mnist import MNIST
-
 from fuel.streams import DataStream, ForceFloatX
 from fuel.schemes import SequentialScheme
 from fuel.datasets.binarized_mnist import BinarizedMNIST
