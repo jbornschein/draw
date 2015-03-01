@@ -101,7 +101,7 @@ def main(name, epochs, batch_size, learning_rate,
     encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
     decoder_mlp = MLP([Tanh()], [             z_dim, 4*dec_dim], name="MLP_dec", **inits)
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
-        
+
     draw = DrawModel(
                 n_iter, 
                 reader=reader,
@@ -113,19 +113,23 @@ def main(name, epochs, batch_size, learning_rate,
                 writer=writer)
     draw.initialize()
 
+
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
     
     #x_recons = 1. + x
-    #x_recons, kl_terms = draw.reconstruct(x)
+    x_recons, kl_terms = draw.reconstruct(x)
+    #x_recons, _, _, _, _ = draw.silly(x, n_steps=10, batch_size=100)
+    #x_recons = x_recons[-1,:,:]
 
-    samples = draw.sample(100) 
-    x_recons = samples[-1, :, :]
+    #samples = draw.sample(100) 
+    #x_recons = samples[-1, :, :]
+    #x_recons = samples[-1, :, :]
 
     recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
 
-    cost = recons_term #+ kl_terms.sum(axis=0).mean()
+    cost = recons_term + kl_terms.sum(axis=0).mean()
     cost.name = "nll_bound"
 
     #------------------------------------------------------------
@@ -190,7 +194,7 @@ def main(name, epochs, batch_size, learning_rate,
                 ForceFloatX(DataStream(mnist_test,
                     iteration_scheme=SequentialScheme(
                     mnist_test.num_examples, batch_size))),
-#                updates=scan_updates, 
+##                updates=scan_updates, 
                 prefix="test"),
             TrainingDataMonitoring(
                 train_monitors, 

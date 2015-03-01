@@ -32,7 +32,7 @@ class Qsampler(Initializable, Random):
                 weights_init=self.weights_init, biases_init=self.biases_init,
                 use_bias=True)
 
-        self.children = [self.mean_transform,]
+        self.children = [self.mean_transform]
     
     def get_dim(self, name):
         if name == 'input':
@@ -42,8 +42,8 @@ class Qsampler(Initializable, Random):
         else:
             raise ValueError
 
-    @application(inputs=['x'], outputs=['z', 'kl_term'])
-    def sample(self, x):
+    @application(inputs=['x', 'u'], outputs=['z', 'kl_term'])
+    def sample(self, x, u):
         """Return a samples and the corresponding KL term
 
         Parameters
@@ -62,12 +62,12 @@ class Qsampler(Initializable, Random):
         log_sigma = mean
 
         # Sample from mean-zeros std.-one Gaussian
-        U = self.theano_rng.normal(
-                    size=mean.shape, 
-                    avg=0., std=1.)
+        #u = self.theano_rng.normal(
+        #            size=mean.shape, 
+        #            avg=0., std=1.)
 
         # ... and scale/translate samples
-        z = mean + tensor.exp(log_sigma) * U
+        z = mean + tensor.exp(log_sigma) * u
 
         # Calculate KL
         kl = (
@@ -236,7 +236,7 @@ class AttentionWriter(Initializable):
 #-----------------------------------------------------------------------------
 
 
-class DrawModel(BaseRecurrent, Initializable):
+class DrawModel(BaseRecurrent, Initializable, Random):
     def __init__(self, n_iter, reader, 
                     encoder_mlp, encoder_rnn, sampler, 
                     decoder_mlp, decoder_rnn, writer, **kwargs):
@@ -256,7 +256,7 @@ class DrawModel(BaseRecurrent, Initializable):
  
     def get_dim(self, name):
         if name == 'c':
-            return self.reader.get_dim('input')
+            return self.reader.get_dim('x_dim')
         elif name == 'h_enc':
             return self.encoder_rnn.get_dim('states')
         elif name == 'c_enc':
@@ -268,25 +268,26 @@ class DrawModel(BaseRecurrent, Initializable):
         elif name == 'c_dec':
             return self.decoder_rnn.get_dim('cells')
         elif name == 'kl':
-            return 1
+            return 0
         else:
             super(DrawModel, self).get_dim(name)
 
     #------------------------------------------------------------------------
 
-    @recurrent(sequences=[], contexts=['x'], 
-               states=['c', 'h_enc', 'c_enc', 'z', 'h_dec', 'c_dec'],
-               outputs=['c', 'h_enc', 'c_enc', 'z', 'h_dec', 'c_dec'])
-    def iterate(self, x, c, h_enc, c_enc, z, h_dec, c_dec):
+    @recurrent(sequences=['u'], contexts=['x'], 
+               states=['c', 'h_enc', 'c_enc', 'z', 'kl', 'h_dec', 'c_dec'],
+               outputs=['c', 'h_enc', 'c_enc', 'z', 'kl', 'h_dec', 'c_dec'])
+    def iterate(self, u, c, h_enc, c_enc, z, kl, h_dec, c_dec, x):
         x_hat = x-T.nnet.sigmoid(c)
         r = self.reader.apply(x, x_hat, h_dec)
         i_enc = self.encoder_mlp.apply(T.concatenate([r, h_dec], axis=1))
         h_enc, c_enc = self.encoder_rnn.apply(states=h_enc, cells=c_enc, inputs=i_enc, iterate=False)
-        z, kl = self.sampler.sample(h_enc)
+        z, kl = self.sampler.sample(h_enc, u)
+
         i_dec = self.decoder_mlp.apply(z)
         h_dec, c_dec = self.decoder_rnn.apply(states=h_dec, cells=c_dec, inputs=i_dec, iterate=False)
         c = c + self.writer.apply(h_dec)
-        return c, h_enc, c_enc, z, h_dec, c_dec
+        return c, h_enc, c_enc, z, kl, h_dec, c_dec
 
     @recurrent(sequences=[], contexts=[], 
                states=['c', 'h_dec', 'c_dec'],
@@ -306,18 +307,21 @@ class DrawModel(BaseRecurrent, Initializable):
 
     @application(inputs=['features'], outputs=['recons', 'kl'])
     def reconstruct(self, features):
-        
-        #import ipdb; ipdb.set_trace()
-        #x = tensor.tile(features, self.n_iter, 0)
-        #x = replicate_batch(features, self.n_iter)
-        c, h_enc, c_enc, z, h_dec, c_dec = \
-            rvals = self.iterate(features, n_steps=self.n_iter, batch_size=100)
+        batch_size = features.shape[0]
+        dim_z = self.get_dim('z')
+
+        # Sample from mean-zeros std.-one Gaussian
+        u = self.theano_rng.normal(
+                    size=(self.n_iter, batch_size, dim_z),
+                    avg=0., std=1.)
+
+        c, h_enc, c_enc, z, kl, h_dec, c_dec = \
+            rvals = self.iterate(x=features, u=u)
 
         x_recons = T.nnet.sigmoid(c[-1,:,:])
         x_recons.name = "reconstruction"
 
-        kl = 0 
-        #kl.name = "kl"
+        kl.name = "kl"
 
         return x_recons, kl
 
@@ -332,14 +336,3 @@ class DrawModel(BaseRecurrent, Initializable):
         """
         c, _, _, = self.decode(n_steps=self.n_iter, batch_size=n_samples)
         return T.nnet.sigmoid(c)
-        
-        """
-        recons_term = BinaryCrossEntropy().apply(x, x_recons)
-        recons_term.name = "recons_term"
-        cost = (recons_term + kl_terms.sum(axis=0)).mean()
-        cost.name = "nll_bound"
-
-        return cost
-        """
-
-
