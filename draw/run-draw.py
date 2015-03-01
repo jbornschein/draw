@@ -76,12 +76,9 @@ def main(name, epochs, batch_size, learning_rate,
         'biases_init': Constant(0.),
     }
     
-    prior_mu = T.zeros([z_dim])
-    prior_log_sigma = T.zeros([z_dim])
-
     if attention:
-        read_N = 4
-        write_N = 6
+        read_N = 2
+        write_N = 5
         read_dim = 2*read_N**2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,

@@ -34,6 +34,7 @@ class ZoomableAttentionWindow(object):
     """
     def __init__(self, img_height, img_width, N, normalize=False):
         """
+
         Parameters
         ----------
         img_heigt, img_width : int
