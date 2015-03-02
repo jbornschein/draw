@@ -132,14 +132,14 @@ class AttentionReader(Initializable):
     def __init__(self, x_dim, dec_dim, width, height, N, **kwargs):
         super(AttentionReader, self).__init__(name="reader", **kwargs)
 
-        self.width = width
-        self.height = height
+        self.img_width = width
+        self.img_height = height
         self.N = N
         self.x_dim = x_dim
         self.dec_dim = dec_dim
         self.output_dim = 2*N*N
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N, normalize=True)
+        self.zoomer = ZoomableAttentionWindow(height, width, N)
         self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
 
         self.children = [self.readout]
@@ -157,17 +157,25 @@ class AttentionReader(Initializable):
     @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['r'])
     def apply(self, x, x_hat, h_dec):
         l = self.readout.apply(h_dec)
-        center_y  = (l[:,0] + 1.) / 2.
-        center_x  = (l[:,1] + 1.) / 2.
+        center_y  = l[:,0]
+        center_x  = l[:,1]
         log_delta = l[:,2]
-        log_sigma = l[:,3] / 2.
+        log_sigma = l[:,3]
         log_gamma = l[:,4]
 
-        w     = self.zoomer.read(x    , center_y, center_x, T.exp(log_delta), T.exp(log_sigma))
-        w_hat = self.zoomer.read(x_hat, center_y, center_x, T.exp(log_delta), T.exp(log_sigma))
-        
+        delta = T.exp(log_delta)
+        sigma = T.exp(log_sigma/2.)
         gamma = T.exp(log_gamma).dimshuffle(0, 'x')
-        return gamma * T.concatenate([w, w_hat], axis=1)
+
+        # normalize coordinates
+        center_x = (center_x+1.)/2. * self.img_width
+        center_y = (center_y+1.)/2. * self.img_height
+        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+
+        w     = gamma * self.zoomer.read(x    , center_y, center_x, delta, sigma)
+        w_hat = gamma * self.zoomer.read(x_hat, center_y, center_x, delta, sigma)
+        
+        return T.concatenate([w, w_hat], axis=1)
 
 #-----------------------------------------------------------------------------
 
@@ -195,15 +203,15 @@ class AttentionWriter(Initializable):
     def __init__(self, input_dim, output_dim, width, height, N, **kwargs):
         super(AttentionWriter, self).__init__(name="writer", **kwargs)
 
-        self.width = width
-        self.height = height
+        self.img_width = width
+        self.img_height = height
         self.N = N
         self.input_dim = input_dim
         self.output_dim = output_dim
 
         assert output_dim == width*height
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N, normalize=True)
+        self.zoomer = ZoomableAttentionWindow(height, width, N)
         self.z_trafo = Linear(
                 name=self.name+'_ztrafo',
                 input_dim=input_dim, output_dim=5, 
@@ -222,14 +230,22 @@ class AttentionWriter(Initializable):
     def apply(self, h):
         w = self.w_trafo.apply(h)
         l = self.z_trafo.apply(h)
-        center_y  = (l[:,0] + 1.) / 2.
-        center_x  = (l[:,1] + 1.) / 2.
+        center_y  = l[:,0]
+        center_x  = l[:,1]
         log_delta = l[:,2]
-        log_sigma = l[:,3] / 2.
+        log_sigma = l[:,3]
         log_gamma = l[:,4]
 
+        delta = T.exp(log_delta)
+        sigma = T.exp(log_sigma/2.)
         gamma = T.exp(log_gamma).dimshuffle(0, 'x')
-        c_update = self.zoomer.write(w, center_y, center_x, T.exp(log_delta), T.exp(log_sigma)) / gamma
+
+        # normalize coordinates
+        center_x = (center_x+1.)/2. * self.img_width
+        center_y = (center_y+1.)/2. * self.img_height
+        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+
+        c_update = 1./gamma * self.zoomer.write(w, center_y, center_x, delta, sigma)
 
         return c_update
 

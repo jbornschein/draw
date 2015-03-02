@@ -32,7 +32,7 @@ def batched_dot(A, B):
 class ZoomableAttentionWindow(object):
     """
     """
-    def __init__(self, img_height, img_width, N, normalize=False):
+    def __init__(self, img_height, img_width, N):
         """
 
         Parameters
@@ -41,12 +41,7 @@ class ZoomableAttentionWindow(object):
             shape of the images 
         N : 
             $N \times N$ attention window size
-        normalize : bool
-            If `True`, the center positions and `delta` for `read` and 
-            `write` operations are expected to be [0..1]. 
-            If `False` the units are pixels.
         """
-        self.normalize = normalize
         self.img_height = img_height
         self.img_width = img_width
         self.N = N
@@ -69,11 +64,6 @@ class ZoomableAttentionWindow(object):
         tol = 1e-4
         N = self.N
 
-        if self.normalize:
-            center_x = center_x * self.img_width
-            center_y = center_y * self.img_height
-            delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
-        
         muX = center_x.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*(T.arange(N)-N/2-0.5)
         muY = center_y.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*(T.arange(N)-N/2-0.5)
 
@@ -143,7 +133,7 @@ if __name__ == "__main__":
     width =  640
 
     #------------------------------------------------------------------------
-    att = ZoomableAttentionWindow(height, width, N, normalize=False)
+    att = ZoomableAttentionWindow(height, width, N)
 
     I_ = T.matrix()
     center_y_ = T.vector()
@@ -173,8 +163,6 @@ if __name__ == "__main__":
     I = np.asarray(I).reshape( (width*height) )
     I = I / 255.
 
-    #center_y = 0.5 # 200
-    #center_x = 0.5 # 330
     center_y = 200.5
     center_x = 330.5
     delta = 5.
