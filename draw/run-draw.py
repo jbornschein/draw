@@ -91,8 +91,8 @@ def main(name, epochs, batch_size, learning_rate,
     }
     
     if attention:
-        read_N = 2
-        write_N = 5
+        read_N = 4
+        write_N = 7
         read_dim = 2*read_N**2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
