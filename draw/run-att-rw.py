@@ -26,6 +26,7 @@ from blocks.initialization import Constant, IsotropicGaussian, Orthogonal
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import WEIGHTS, BIASES, PARAMETER
+from blocks.model import Model
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.plot import Plot
@@ -152,7 +153,7 @@ def main(name, epochs, batch_size, learning_rate):
     #mnist_test = MNIST("test", binary=True, sources=['features'])
 
     main_loop = MainLoop(
-        model=None,
+        model=Model(cost),
         data_stream=ForceFloatX(DataStream(mnist_train,
                         iteration_scheme=SequentialScheme(
                         mnist_train.num_examples, batch_size))),

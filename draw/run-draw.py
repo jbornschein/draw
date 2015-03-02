@@ -3,6 +3,7 @@
 from __future__ import division, print_function
 
 import logging
+import numpy as np
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -32,7 +33,7 @@ from blocks.extensions.plot import Plot
 from blocks.extensions.saveload import SerializeMainLoop
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
-
+from blocks.model import Model
 from blocks.bricks import Tanh
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
@@ -45,10 +46,23 @@ fuel.config.floatX = theano.config.floatX
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
-    
+
+     # Learning rate
+    def lr_tag(value):
+        """ Convert a float into a short tag-usable string representation. E.g.:
+            0.1   -> 11
+            0.01  -> 12
+            0.001 -> 13
+            0.005 -> 53
+        """
+        exp = np.floor(np.log10(value))
+        leading = ("%e"%value)[0]
+        return "%s%d" % (leading, -exp)
+
     if name is None:
         tag = "watt" if attention else "woatt"
-        name = "%s-t%d-enc%d-dec%d-z%d" % (tag, n_iter, enc_dim, dec_dim, z_dim)
+        lr_str = lr_tag(learning_rate)
+        name = "%s-t%d-enc%d-dec%d-z%d-lr%s" % (tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
     print("\nRunning experiment %s" % name)
     print("         learning rate: %5.3f" % learning_rate) 
@@ -137,7 +151,7 @@ def main(name, epochs, batch_size, learning_rate,
         cost=cost, 
         params=params,
         step_rule=CompositeRule([
-            #StepClipping(3.), 
+            StepClipping(3.), 
             Adam(learning_rate),
         ])
         #step_rule=RMSProp(learning_rate),
@@ -178,7 +192,7 @@ def main(name, epochs, batch_size, learning_rate,
     mnist_test = BinarizedMNIST("test", sources=['features'])
 
     main_loop = MainLoop(
-        model=None,
+        model=Model(cost),
         data_stream=ForceFloatX(DataStream(mnist_train,
                         iteration_scheme=SequentialScheme(
                         mnist_train.num_examples, batch_size))),
