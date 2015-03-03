@@ -9,29 +9,8 @@ import theano.tensor as T
 
 from theano import tensor
 
-#-----------------------------------------------------------------------------
-
-def batched_dot(A, B):
-    """Batched version of dot-product.
-
-    For A[dim_1, dim_2, dim_3] and B[dim_1, dim_3, dim_4] this 
-    is \approx equal to:
-        
-    for i in range(dim_1):
-        C[i] = tensor.dot(A, B)
-
-    Returns
-    -------
-        C : shape (dim_1 \times dim_2 \times dim_4)
-    """
-    C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])
-    return C.sum(axis=-2)
-
-#-----------------------------------------------------------------------------
 
 class ZoomableAttentionWindow(object):
-    """
-    """
     def __init__(self, img_height, img_width, N):
         """
 
@@ -59,7 +38,7 @@ class ZoomableAttentionWindow(object):
         
         Returns
         -------
-            FX, FY 
+            FY, FX 
         """
         tol = 1e-4
         N = self.N
@@ -75,14 +54,14 @@ class ZoomableAttentionWindow(object):
         FX = FX / (FX.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
         FY = FY / (FY.sum(axis=-1).dimshuffle(0, 1, 'x') + tol)
 
-        return FX, FY
+        return FY, FX
 
 
     def read(self, images, center_y, center_x, delta, sigma):
         """
         Parameters
         ----------
-        image : T.matrix    (shape: batch_size x img_size)
+        images : T.matrix    (shape: batch_size x img_size)
             Batch of images. Internally it will be reshaped to be a 
             (batch_size, img_height, img_width)-shaped stack of images.
         center_y : T.vector (shape: batch_size)
@@ -101,10 +80,10 @@ class ZoomableAttentionWindow(object):
         I = images.reshape( (batch_size, self.img_height, self.img_width) )
 
         # Get separable filterbank
-        FX, FY = self.filterbank_matrices(center_y, center_x, delta, sigma)
+        FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
-        # Apply to the batch of images
-        W = batched_dot(batched_dot(FY, I), FX.transpose([0,2,1]))
+        # apply to the batch of images
+        W = T.batched_dot(T.batched_dot(FY, I), FX.transpose([0,2,1]))
 
         return W.reshape((batch_size, N*N))
 
@@ -117,12 +96,14 @@ class ZoomableAttentionWindow(object):
         W = windows.reshape( (batch_size, N, N) )
 
         # Get separable filterbank
-        FX, FY = self.filterbank_matrices(center_y, center_x, delta, sigma)
+        FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
-        # Apply...
-        I = batched_dot(batched_dot(FY.transpose([0,2,1]), W), FX)
+        # apply...
+        I = T.batched_dot(T.batched_dot(FY.transpose([0,2,1]), W), FX)
 
         return I.reshape( (batch_size, self.img_height*self.img_width) )
+
+#=============================================================================
 
 
 if __name__ == "__main__":

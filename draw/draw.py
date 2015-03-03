@@ -129,11 +129,11 @@ class Reader(Initializable):
         return T.concatenate([x, x_hat], axis=1)
 
 class AttentionReader(Initializable):
-    def __init__(self, x_dim, dec_dim, width, height, N, **kwargs):
+    def __init__(self, x_dim, dec_dim, height, width, N, **kwargs):
         super(AttentionReader, self).__init__(name="reader", **kwargs)
 
-        self.img_width = width
         self.img_height = height
+        self.img_width = width
         self.N = N
         self.x_dim = x_dim
         self.dec_dim = dec_dim
