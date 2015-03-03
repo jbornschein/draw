@@ -12,7 +12,7 @@ from theano import tensor
 
 class ZoomableAttentionWindow(object):
     def __init__(self, img_height, img_width, N):
-        """
+        """A zoomable attention window for images.
 
         Parameters
         ----------
@@ -26,7 +26,7 @@ class ZoomableAttentionWindow(object):
         self.N = N
 
     def filterbank_matrices(self, center_y, center_x, delta, sigma):
-        """Create a Fx and a Fy
+        """Create a Fy and a Fx
         
         Parameters
         ----------
