@@ -10,6 +10,7 @@ import theano.tensor as T
 from theano import tensor
 
 
+
 class ZoomableAttentionWindow(object):
     def __init__(self, img_height, img_width, N):
         """A zoomable attention window for images.
@@ -87,7 +88,6 @@ class ZoomableAttentionWindow(object):
 
         return W.reshape((batch_size, N*N))
 
-
     def write(self, windows, center_y, center_x, delta, sigma):
         N = self.N
         batch_size = windows.shape[0]
@@ -102,6 +102,39 @@ class ZoomableAttentionWindow(object):
         I = T.batched_dot(T.batched_dot(FY.transpose([0,2,1]), W), FX)
 
         return I.reshape( (batch_size, self.img_height*self.img_width) )
+
+    def nn2att(self, l):
+        """Convert neural-net outputs to attention parameters
+    
+        Parameters
+        ----------
+        l : tensor (batch_size x 5)
+    
+        Returns
+        -------
+        center_y : vector (batch_size)
+        center_x : vector (batch_size)
+        delta : vector (batch_size)
+        sigma : vector (batch_size)
+        gamma : vector (batch_size)
+        """
+        center_y  = l[:,0]
+        center_x  = l[:,1]
+        log_delta = l[:,2]
+        log_sigma = l[:,3]
+        log_gamma = l[:,4]
+    
+        delta = T.exp(log_delta)
+        sigma = T.exp(log_sigma/2.)
+        gamma = T.exp(log_gamma).dimshuffle(0, 'x')
+    
+        # normalize coordinates
+        center_x = (center_x+1.)/2. * self.img_width
+        center_y = (center_y+1.)/2. * self.img_height
+        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+    
+        return center_y, center_x, delta, sigma, gamma
+
 
 #=============================================================================
 

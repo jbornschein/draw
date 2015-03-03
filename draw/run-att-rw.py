@@ -43,6 +43,7 @@ from attention import ZoomableAttentionWindow
 
 fuel.config.floatX = theano.config.floatX
 
+
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate):
     if name is None:
@@ -68,15 +69,24 @@ def main(name, epochs, batch_size, learning_rate):
     
     x_dim = img_height * img_width
 
-    reader = ZoomableAttentionWindow(img_height, img_width,  read_N, normalize=True)
-    writer = ZoomableAttentionWindow(img_height, img_width, write_N, normalize=True)
+    reader = ZoomableAttentionWindow(img_height, img_width,  read_N)
+    writer = ZoomableAttentionWindow(img_height, img_width, write_N)
 
     # Parameterize the attention reader and writer
-    mlpr = MLP(activations=[Tanh(), Identity()], dims=[    x_dim,  50,         5], **inits)
-    mlpw = MLP(activations=[Tanh(), Identity()], dims=[    x_dim,  50,         5], **inits)
+    mlpr = MLP(activations=[Tanh(), Identity()], 
+                dims=[x_dim, 50, 5], 
+                name="RMLP",
+                **inits)
+    mlpw = MLP(activations=[Tanh(), Identity()],
+                dims=[x_dim, 50, 5],
+                name="WMLP",
+                **inits)
 
     # MLP between the reader and writer
-    mlp = MLP(activations=[Tanh(), Identity()], dims=[read_N**2, 300, write_N**2], **inits)
+    mlp = MLP(activations=[Tanh(), Identity()],
+                dims=[read_N**2, 300, write_N**2],
+                name="MLP",
+                **inits)
 
     for brick in [mlpr, mlpw, mlp]:
         brick.allocate()
@@ -88,22 +98,12 @@ def main(name, epochs, batch_size, learning_rate):
     hr = mlpr.apply(x)
     hw = mlpw.apply(x)
 
-    center_y  = (hr[:,0] + 1.) / 2.
-    center_x  = (hr[:,1] + 1.) / 2.
-    delta = T.exp(hr[:,2])
-    sigma = T.exp(hr[:,3] / 2.)
-    gamma = T.exp(hr[:,4]).dimshuffle(0, 'x')
-
+    center_y, center_x, delta, sigma, gamma = reader.nn2att(hr)
     r = reader.read(x, center_y, center_x, delta, sigma)
 
     h = mlp.apply(r)
 
-    center_y  = (hw[:,0] + 1.) / 2.
-    center_x  = (hw[:,1] + 1.) / 2.
-    delta = T.exp(hw[:,2])
-    sigma = T.exp(hw[:,3] / 2.)
-    gamma = T.exp(hw[:,4]).dimshuffle(0, 'x')
-
+    center_y, center_x, delta, sigma, gamma = writer.nn2att(hw)
     c = writer.write(h, center_y, center_x, delta, sigma) / gamma
     x_recons = T.nnet.sigmoid(c)
 

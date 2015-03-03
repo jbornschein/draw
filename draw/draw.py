@@ -157,20 +157,8 @@ class AttentionReader(Initializable):
     @application(inputs=['x', 'x_hat', 'h_dec'], outputs=['r'])
     def apply(self, x, x_hat, h_dec):
         l = self.readout.apply(h_dec)
-        center_y  = l[:,0]
-        center_x  = l[:,1]
-        log_delta = l[:,2]
-        log_sigma = l[:,3]
-        log_gamma = l[:,4]
 
-        delta = T.exp(log_delta)
-        sigma = T.exp(log_sigma/2.)
-        gamma = T.exp(log_gamma).dimshuffle(0, 'x')
-
-        # normalize coordinates
-        center_x = (center_x+1.)/2. * self.img_width
-        center_y = (center_y+1.)/2. * self.img_height
-        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+        center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
 
         w     = gamma * self.zoomer.read(x    , center_y, center_x, delta, sigma)
         w_hat = gamma * self.zoomer.read(x_hat, center_y, center_x, delta, sigma)
@@ -230,20 +218,8 @@ class AttentionWriter(Initializable):
     def apply(self, h):
         w = self.w_trafo.apply(h)
         l = self.z_trafo.apply(h)
-        center_y  = l[:,0]
-        center_x  = l[:,1]
-        log_delta = l[:,2]
-        log_sigma = l[:,3]
-        log_gamma = l[:,4]
 
-        delta = T.exp(log_delta)
-        sigma = T.exp(log_sigma/2.)
-        gamma = T.exp(log_gamma).dimshuffle(0, 'x')
-
-        # normalize coordinates
-        center_x = (center_x+1.)/2. * self.img_width
-        center_y = (center_y+1.)/2. * self.img_height
-        delta = (max(self.img_width, self.img_height)-1) / (self.N-1) * delta
+        center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
 
         c_update = 1./gamma * self.zoomer.write(w, center_y, center_x, delta, sigma)
 
