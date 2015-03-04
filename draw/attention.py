@@ -77,20 +77,31 @@ class ZoomableAttentionWindow(object):
 
 
     def read(self, images, center_y, center_x, delta, sigma):
-        """
+        """Extract a batch of attention windows from the given images.
+
         Parameters
         ----------
-        images : T.matrix    (shape: batch_size x img_size)
-            Batch of images. Internally it will be reshaped to be a 
-            (batch_size, img_height, img_width)-shaped stack of images.
-        center_y : T.vector (shape: batch_size)
-        center_x : T.vector (shape: batch_size)
-        delta : T.vector    (shape: batch_size)
-        sigma : T.vector    (shape: batch_size)
+        images : :class:`~tensor.TensorVariable`    
+            Batch of images with shape (batch_size x img_size). Internally it 
+            will be reshaped to a (batch_size, img_height, img_width)-shaped
+            stack of images.
+        center_y : :class:`~tensor.TensorVariable`
+            Center coordinates for the attention window.
+            Expected shape: (batch_size,)
+        center_x : :class:`~tensor.TensorVariable`
+            Center coordinates for the attention window.
+            Expected shape: (batch_size,)
+        delta : :class:`~tensor.TensorVariable`
+            Distance between extracted grid points.
+            Expected shape: (batch_size,)
+        sigma : :class:`~tensor.TensorVariable`
+            Std. dev. for Gaussian readout kernel.
+            Expected shape: (batch_size,)
 
         Returns
         -------
-        window : T.matrix   (shape: batch_size x N**2)
+        windows : :class:`~tensor.TensorVariable`
+            extracted windows of shape: (batch_size x N**2)
         """
         N = self.N
         batch_size = images.shape[0]
@@ -107,6 +118,32 @@ class ZoomableAttentionWindow(object):
         return W.reshape((batch_size, N*N))
 
     def write(self, windows, center_y, center_x, delta, sigma):
+        """Write a batch of windows into full sized images.
+
+        Parameters
+        ----------
+        windows : :class:`~tensor.TensorVariable`    
+            Batch of images with shape (batch_size x N*N). Internally it 
+            will be reshaped to a (batch_size, N, N)-shaped
+            stack of images.
+        center_y : :class:`~tensor.TensorVariable`
+            Center coordinates for the attention window.
+            Expected shape: (batch_size,)
+        center_x : :class:`~tensor.TensorVariable`
+            Center coordinates for the attention window.
+            Expected shape: (batch_size,)
+        delta : :class:`~tensor.TensorVariable`
+            Distance between extracted grid points.
+            Expected shape: (batch_size,)
+        sigma : :class:`~tensor.TensorVariable`
+            Std. dev. for Gaussian readout kernel.
+            Expected shape: (batch_size,)
+
+        Returns
+        -------
+        images : :class:`~tensor.TensorVariable`
+            extracted windows of shape: (batch_size x img_height*img_width)
+        """
         N = self.N
         batch_size = windows.shape[0]
 
@@ -126,15 +163,16 @@ class ZoomableAttentionWindow(object):
     
         Parameters
         ----------
-        l : tensor (batch_size x 5)
+        layer : :class:`~tensor.TensorVariable`
+            A batch of neural net outputs with shape (batch_size x 5)
     
         Returns
         -------
-        center_y : vector (batch_size)
-        center_x : vector (batch_size)
-        delta : vector (batch_size)
-        sigma : vector (batch_size)
-        gamma : vector (batch_size)
+        center_y : :class:`~tensor.TensorVariable` 
+        center_x : :class:`~tensor.TensorVariable` 
+        delta : :class:`~tensor.TensorVariable` 
+        sigma : :class:`~tensor.TensorVariable` 
+        gamma : :class:`~tensor.TensorVariable` 
         """
         center_y  = l[:,0]
         center_x  = l[:,1]
