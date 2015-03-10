@@ -47,35 +47,6 @@ fuel.config.floatX = theano.config.floatX
 def main(name, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
 
-     # Learning rate
-    def lr_tag(value):
-        """ Convert a float into a short tag-usable string representation. E.g.:
-            0.1   -> 11
-            0.01  -> 12
-            0.001 -> 13
-            0.005 -> 53
-        """
-        exp = np.floor(np.log10(value))
-        leading = ("%e"%value)[0]
-        return "%s%d" % (leading, -exp)
-
-    if name is None:
-        tag = "watt" if attention else "woatt"
-        lr_str = lr_tag(learning_rate)
-        name = "%s-t%d-enc%d-dec%d-z%d-lr%s" % (tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
-
-    print("\nRunning experiment %s" % name)
-    print("         learning rate: %5.3f" % learning_rate) 
-    print("             attention: %s" % attention)
-    print("          n_iterations: %d" % n_iter)
-    print("     encoder dimension: %d" % enc_dim)
-    print("           z dimension: %d" % z_dim)
-    print("     decoder dimension: %d" % dec_dim)
-    print()
-
-
-    #------------------------------------------------------------------------
-
     x_dim = 28*28
     img_height, img_width = (28, 28)
     
@@ -90,9 +61,11 @@ def main(name, epochs, batch_size, learning_rate,
         'biases_init': Constant(0.),
     }
     
-    if attention:
-        read_N = 4
-        write_N = 7
+    if attention != "":
+        read_N, write_N = attention.split(',')
+    
+        read_N = int(read_N)
+        write_N = int(write_N)
         read_dim = 2*read_N**2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
@@ -100,12 +73,44 @@ def main(name, epochs, batch_size, learning_rate,
                                  N=read_N, **inits)
         writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
                                  width=img_width, height=img_height,
-                                 N=read_N, **inits)
+                                 N=write_N, **inits)
+        attention_tag = "-r%d-w%d" % (read_N, write_N)
     else:
         read_dim = 2*x_dim
 
         reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
+
+        attention_tag = ""
+
+    #----------------------------------------------------------------------
+
+    # Learning rate
+    def lr_tag(value):
+        """ Convert a float into a short tag-usable string representation. E.g.:
+            0.1   -> 11
+            0.01  -> 12
+            0.001 -> 13
+            0.005 -> 53
+        """
+        exp = np.floor(np.log10(value))
+        leading = ("%e"%value)[0]
+        return "%s%d" % (leading, -exp)
+
+    if name is None:
+        lr_str = lr_tag(learning_rate)
+        name = "mnist%s-t%d-enc%d-dec%d-z%d-lr%s" % (attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
+
+    print("\nRunning experiment %s" % name)
+    print("         learning rate: %5.3f" % learning_rate) 
+    print("             attention: %s" % attention)
+    print("          n_iterations: %d" % n_iter)
+    print("     encoder dimension: %d" % enc_dim)
+    print("           z dimension: %d" % z_dim)
+    print("     decoder dimension: %d" % dec_dim)
+    print()
+
+    #----------------------------------------------------------------------
 
     encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
     decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
@@ -229,8 +234,8 @@ if __name__ == "__main__":
                 default=100, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                 default=1e-3, help="Learning rate")
-    parser.add_argument("--attention", "-a", action="store_true",
-                help="Use attention mechanism")
+    parser.add_argument("--attention", "-a", type=str, default="",
+                help="Use attention mechanism (read_window,write_window)")
     parser.add_argument("--niter", type=int, dest="n_iter",
                 default=10, help="No. of iterations")
     parser.add_argument("--enc-dim", type=int, dest="enc_dim",
