@@ -80,9 +80,15 @@ class Qsampler(Initializable, Random):
  
         return z, kl
 
-    @application(inputs=['n_samples'])
-    def sample_from_prior(self, n_samples):
+    #@application(inputs=['n_samples'])
+    @application(inputs=['u'], outputs=['z_prior'])
+    def sample_from_prior(self, u):
         """Sample z from the prior distribution P_z.
+
+        Parameters
+        ----------
+        u : tensor.matrix
+            gaussian random source 
 
         Returns
         -------
@@ -93,12 +99,12 @@ class Qsampler(Initializable, Random):
         z_dim = self.mean_transform.get_dim('output')
     
         # Sample from mean-zeros std.-one Gaussian
-        U = self.theano_rng.normal(
-                    size=(n_samples, z_dim),
-                    avg=0., std=1.)
+        #u = self.theano_rng.normal(
+        #            size=(n_samples, z_dim),
+        #            avg=0., std=1.)
 
         # ... and scale/translate samples
-        z = self.prior_mean + tensor.exp(self.prior_log_sigma) * U
+        z = self.prior_mean + tensor.exp(self.prior_log_sigma) * u
         #z.name("z_prior")
     
         return z
@@ -281,13 +287,13 @@ class DrawModel(BaseRecurrent, Initializable, Random):
         c = c + self.writer.apply(h_dec)
         return c, h_enc, c_enc, z, kl, h_dec, c_dec
 
-    @recurrent(sequences=[], contexts=[], 
+    @recurrent(sequences=['u'], contexts=[], 
                states=['c', 'h_dec', 'c_dec'],
                outputs=['c', 'h_dec', 'c_dec'])
-    def decode(self, c, h_dec, c_dec):
+    def decode(self, u, c, h_dec, c_dec):
         batch_size = c.shape[0]
 
-        z = self.sampler.sample_from_prior(batch_size)
+        z = self.sampler.sample_from_prior(u)
         i_dec = self.decoder_mlp.apply(z)
         h_dec, c_dec = self.decoder_rnn.apply(
                     states=h_dec, cells=c_dec, 
@@ -326,5 +332,13 @@ class DrawModel(BaseRecurrent, Initializable, Random):
 
         samples : tensor3 (n_samples, n_iter, x_dim)
         """
-        c, _, _, = self.decode(n_steps=self.n_iter, batch_size=n_samples)
+    
+        # Sample from mean-zeros std.-one Gaussian
+        u_dim = self.sampler.mean_transform.get_dim('output')
+        u = self.theano_rng.normal(
+                    size=(self.n_iter, n_samples, u_dim),
+                    avg=0., std=1.)
+
+        #c, _, _, = self.decode(n_steps=self.n_iter, batch_size=n_samples)
+        c, _, _, = self.decode(u)
         return T.nnet.sigmoid(c)
