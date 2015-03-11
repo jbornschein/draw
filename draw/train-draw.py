@@ -9,10 +9,10 @@ FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
-import ipdb
-import fuel
 import theano
 import theano.tensor as T
+import fuel
+import ipdb
 
 from argparse import ArgumentParser
 from collections import OrderedDict
