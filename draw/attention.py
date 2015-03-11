@@ -9,7 +9,25 @@ import theano.tensor as T
 
 from theano import tensor
 
+#-----------------------------------------------------------------------------
+        
+def my_batched_dot(A, B):     
+    """Batched version of dot-product.     
+       
+    For A[dim_1, dim_2, dim_3] and B[dim_1, dim_3, dim_4] this         
+    is \approx equal to:       
+               
+    for i in range(dim_1):     
+        C[i] = tensor.dot(A, B)        
+       
+    Returns        
+    -------        
+        C : shape (dim_1 \times dim_2 \times dim_4)        
+    """        
+    C = A.dimshuffle([0,1,2,'x']) * B.dimshuffle([0,'x',1,2])      
+    return C.sum(axis=-2)
 
+#-----------------------------------------------------------------------------
 
 class ZoomableAttentionWindow(object):
     def __init__(self, img_height, img_width, N):
@@ -84,7 +102,7 @@ class ZoomableAttentionWindow(object):
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
         # apply to the batch of images
-        W = T.batched_dot(T.batched_dot(FY, I), FX.transpose([0,2,1]))
+        W = my_batched_dot(my_batched_dot(FY, I), FX.transpose([0,2,1]))
 
         return W.reshape((batch_size, N*N))
 
@@ -99,7 +117,7 @@ class ZoomableAttentionWindow(object):
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
         # apply...
-        I = T.batched_dot(T.batched_dot(FY.transpose([0,2,1]), W), FX)
+        I = my_batched_dot(my_batched_dot(FY.transpose([0,2,1]), W), FX)
 
         return I.reshape( (batch_size, self.img_height*self.img_width) )
 
