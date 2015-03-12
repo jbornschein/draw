@@ -30,7 +30,7 @@ from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.plot import Plot
-from blocks.extensions.saveload import SerializeMainLoop
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
@@ -216,7 +216,7 @@ def main(name, epochs, batch_size, learning_rate,
                 train_monitors, 
                 prefix="train",
                 after_every_epoch=True),
-            SerializeMainLoop(name+".pkl"),
+            Checkpoint(name+".pkl"),
             Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
