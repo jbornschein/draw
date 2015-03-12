@@ -81,7 +81,7 @@ def main(name, epochs, batch_size, learning_rate,
         reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
 
-        attention_tag = ""
+        attention_tag = "full"
 
     #----------------------------------------------------------------------
 
@@ -97,9 +97,8 @@ def main(name, epochs, batch_size, learning_rate,
         leading = ("%e"%value)[0]
         return "%s%d" % (leading, -exp)
 
-    if name is None:
-        lr_str = lr_tag(learning_rate)
-        name = "mnist%s-t%d-enc%d-dec%d-z%d-lr%s" % (attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
+    lr_str = lr_tag(learning_rate)
+    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
     print("\nRunning experiment %s" % name)
     print("         learning rate: %5.3f" % learning_rate) 
