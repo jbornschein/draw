@@ -18,7 +18,7 @@ from argparse import ArgumentParser
 from collections import OrderedDict
 from theano import tensor
 
-from fuel.streams import DataStream, ForceFloatX
+from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.binarized_mnist import BinarizedMNIST
 
@@ -34,7 +34,7 @@ from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks import Tanh
+from blocks.bricks import Tanh, Identity
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
@@ -74,7 +74,7 @@ def main(name, epochs, batch_size, learning_rate,
         writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
                                  width=img_width, height=img_height,
                                  N=write_N, **inits)
-        attention_tag = "-r%d-w%d" % (read_N, write_N)
+        attention_tag = "r%d-w%d" % (read_N, write_N)
     else:
         read_dim = 2*x_dim
 
@@ -113,8 +113,8 @@ def main(name, epochs, batch_size, learning_rate,
 
     encoder_rnn = LSTM(dim=enc_dim, name="RNN_enc", **rnninits)
     decoder_rnn = LSTM(dim=dec_dim, name="RNN_dec", **rnninits)
-    encoder_mlp = MLP([Tanh()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
-    decoder_mlp = MLP([Tanh()], [             z_dim, 4*dec_dim], name="MLP_dec", **inits)
+    encoder_mlp = MLP([Identity()], [(read_dim+dec_dim), 4*enc_dim], name="MLP_enc", **inits)
+    decoder_mlp = MLP([Identity()], [             z_dim, 4*dec_dim], name="MLP_dec", **inits)
     q_sampler = Qsampler(input_dim=enc_dim, output_dim=z_dim, **inits)
 
     draw = DrawModel(
@@ -193,28 +193,34 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------
 
     mnist_train = BinarizedMNIST("train", sources=['features'])
+    mnist_valid = BinarizedMNIST("valid", sources=['features'])
     mnist_test = BinarizedMNIST("test", sources=['features'])
+
+    train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
+    valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
+    test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
 
     main_loop = MainLoop(
         model=Model(cost),
-        data_stream=ForceFloatX(DataStream(mnist_train,
-                        iteration_scheme=SequentialScheme(
-                        mnist_train.num_examples, batch_size))),
+        data_stream=train_stream,
         algorithm=algorithm,
         extensions=[
             Timing(),
             FinishAfter(after_n_epochs=epochs),
-            DataStreamMonitoring(
-                monitors,
-                ForceFloatX(DataStream(mnist_test,
-                    iteration_scheme=SequentialScheme(
-                    mnist_test.num_examples, batch_size))),
-##                updates=scan_updates, 
-                prefix="test"),
             TrainingDataMonitoring(
                 train_monitors, 
                 prefix="train",
                 after_every_epoch=True),
+#            DataStreamMonitoring(
+#                monitors,
+#                valid_stream,
+##                updates=scan_updates, 
+#                prefix="valid"),
+            DataStreamMonitoring(
+                monitors,
+                test_stream,
+#                updates=scan_updates, 
+                prefix="test"),
             Checkpoint(name+".pkl"),
             Plot(name, channels=plot_channels),
             ProgressBar(),

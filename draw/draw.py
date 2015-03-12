@@ -32,7 +32,13 @@ class Qsampler(Initializable, Random):
                 weights_init=self.weights_init, biases_init=self.biases_init,
                 use_bias=True)
 
-        self.children = [self.mean_transform]
+        self.log_sigma_transform = Linear(
+                name=self.name+'_log_sigma',
+                input_dim=input_dim, output_dim=output_dim, 
+                weights_init=self.weights_init, biases_init=self.biases_init,
+                use_bias=True)
+
+        self.children = [self.mean_transform, self.log_sigma_transform]
     
     def get_dim(self, name):
         if name == 'input':
@@ -59,7 +65,7 @@ class Qsampler(Initializable, Random):
         
         """
         mean = self.mean_transform.apply(x)
-        log_sigma = mean
+        log_sigma = self.log_sigma_transform.apply(x)
 
         # Sample from mean-zeros std.-one Gaussian
         #u = self.theano_rng.normal(
