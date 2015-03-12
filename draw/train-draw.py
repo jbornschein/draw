@@ -226,7 +226,7 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default=None, help="Name for this experiment")
+                default="mnist", help="Name for this experiment")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
