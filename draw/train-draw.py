@@ -155,7 +155,7 @@ def main(name, epochs, batch_size, learning_rate,
         cost=cost, 
         params=params,
         step_rule=CompositeRule([
-            StepClipping(3.), 
+            StepClipping(10.), 
             Adam(learning_rate),
         ])
         #step_rule=RMSProp(learning_rate),
