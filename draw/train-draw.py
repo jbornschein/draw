@@ -30,7 +30,7 @@ from blocks.roles import WEIGHTS, BIASES, PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.plot import Plot
-from blocks.extensions.saveload import Checkpoint
+from blocks.extensions.saveload import Checkpoint, Dump
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
@@ -221,7 +221,8 @@ def main(name, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint(name+".pkl"),
+            Checkpoint(name+".pkl", save_separately=['log', 'model']),
+            Dump(name+"_dump"),
             Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])

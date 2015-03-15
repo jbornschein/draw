@@ -47,12 +47,13 @@ def img_grid(arr, global_scale=True):
         if global_scale:
             this = arr[i]
         else:
-            this = scale_norm(arr)
+            this = scale_norm(arr[i])
 
         offset_y, offset_x = r*height, c*width
         I[offset_y:(offset_y+height), offset_x:(offset_x+width)] = this
-
-    return Image.fromarray(I, mode='L')
+    
+    I = (255*I).astype(np.uint8)
+    return Image.fromarray(I)
 
 
 if __name__ == "__main__":
