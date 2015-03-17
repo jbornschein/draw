@@ -222,7 +222,7 @@ def main(name, epochs, batch_size, learning_rate,
 #                updates=scan_updates, 
                 prefix="test"),
             Checkpoint(name+".pkl", save_separately=['log', 'model']),
-            Dump(name+"_dump"),
+            #Dump(name),
             Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])

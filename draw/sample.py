@@ -76,12 +76,12 @@ if __name__ == "__main__":
     n_samples = T.iscalar("n_samples")
     samples = draw.sample(n_samples)
 
-    do_sample = theano.function([n_samples], outputs=samplesm, allow_input_downcast=True)
+    do_sample = theano.function([n_samples], outputs=samples, allow_input_downcast=True)
 
     #------------------------------------------------------------
     logging.info("Sampling and saving images...")
     
-    samples = do_sample(100)
+    samples = do_sample(16*16)
     #samples = np.random.normal(size=(16, 100, 28*28))
 
     n_iter, N, D = samples.shape
@@ -92,4 +92,7 @@ if __name__ == "__main__":
         img = img_grid(samples[i,:,:,:])
         img.save("samples-%03d.png" % i)
         
+    #with open("centers.pkl", "wb") as f:
+    #    pikle.dump(f, (center_y, center_x, delta))
+
 

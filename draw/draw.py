@@ -237,6 +237,19 @@ class AttentionWriter(Initializable):
 
         return c_update
 
+    @application(inputs=['h'], outputs=['c_update', 'center_y', 'center_x', 'delta'])
+    def apply_detailed(self, h):
+        w = self.w_trafo.apply(h)
+        l = self.z_trafo.apply(h)
+
+        center_y, center_x, delta, sigma, gamma = self.zoomer.nn2att(l)
+
+        c_update = 1./gamma * self.zoomer.write(w, center_y, center_x, delta, sigma)
+
+        return c_update, center_y, center_x, delta
+
+
+
 #-----------------------------------------------------------------------------
 
 
@@ -272,6 +285,12 @@ class DrawModel(BaseRecurrent, Initializable, Random):
         elif name == 'c_dec':
             return self.decoder_rnn.get_dim('cells')
         elif name == 'kl':
+            return 0
+        elif name == 'center_y':
+            return 0
+        elif name == 'center_x':
+            return 0
+        elif name == 'delta':
             return 0
         else:
             super(DrawModel, self).get_dim(name)
@@ -345,6 +364,6 @@ class DrawModel(BaseRecurrent, Initializable, Random):
                     size=(self.n_iter, n_samples, u_dim),
                     avg=0., std=1.)
 
-        #c, _, _, = self.decode(n_steps=self.n_iter, batch_size=n_samples)
         c, _, _, = self.decode(u)
+        #c, _, _, center_y, center_x, delta = self.decode(u)
         return T.nnet.sigmoid(c)
