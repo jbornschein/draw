@@ -14,9 +14,11 @@ To train a model with a 2x2 read and a 5x5 write attention window run
 
 It will take about 1 day to train and will create samples similar to 
 
- ![Samples-r2-w5-t64](draw/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
+ ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 
+with the KL divergence plottet over inference iterations and epochs
 
+ ![KL-Divergenc](doc/kl_divergence.png)
 
 
 Note
