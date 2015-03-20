@@ -167,18 +167,17 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------------------
     # Setup monitors
     monitors = [cost]
-    """
     for t in range(n_iter):
         kl_term_t = kl_terms[t,:].mean()
         kl_term_t.name = "kl_term_%d" % t
 
-        x_recons_t = T.nnet.sigmoid(c[t,:,:])
-        recons_term_t = BinaryCrossEntropy().apply(x, x_recons_t)
-        recons_term_t = recons_term_t.mean()
-        recons_term_t.name = "recons_term_%d" % t
+        #x_recons_t = T.nnet.sigmoid(c[t,:,:])
+        #recons_term_t = BinaryCrossEntropy().apply(x, x_recons_t)
+        #recons_term_t = recons_term_t.mean()
+        #recons_term_t.name = "recons_term_%d" % t
 
-        monitors +=[kl_term_t, recons_term_t]
-    """
+        monitors +=[kl_term_t]
+
     train_monitors = monitors[:]
     train_monitors += [aggregation.mean(algorithm.total_gradient_norm)]
     train_monitors += [aggregation.mean(algorithm.total_step_norm)]
@@ -186,7 +185,7 @@ def main(name, epochs, batch_size, learning_rate,
     plot_channels = [
         ["train_nll_bound", "test_nll_bound"],
         ["train_kl_term_%d" % t for t in range(n_iter)],
-        ["train_recons_term_%d" % t for t in range(n_iter)],
+        #["train_recons_term_%d" % t for t in range(n_iter)],
         ["train_total_gradient_norm", "train_total_step_norm"]
     ]
 
