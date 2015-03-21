@@ -141,7 +141,7 @@ class Reader(Initializable):
         return T.concatenate([x, x_hat], axis=1)
 
 class AttentionReader(Initializable):
-    def __init__(self, x_dim, dec_dim, height, width, N, **kwargs):
+    def __init__(self, x_dim, dec_dim, channels, height, width, N, **kwargs):
         super(AttentionReader, self).__init__(name="reader", **kwargs)
 
         self.img_height = height
@@ -151,7 +151,7 @@ class AttentionReader(Initializable):
         self.dec_dim = dec_dim
         self.output_dim = 2*N*N
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N)
+        self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
 
         self.children = [self.readout]
@@ -200,9 +200,10 @@ class Writer(Initializable):
 
 
 class AttentionWriter(Initializable):
-    def __init__(self, input_dim, output_dim, width, height, N, **kwargs):
+    def __init__(self, input_dim, output_dim, channels, width, height, N, **kwargs):
         super(AttentionWriter, self).__init__(name="writer", **kwargs)
 
+        self.channels = channels
         self.img_width = width
         self.img_height = height
         self.N = N
@@ -211,7 +212,7 @@ class AttentionWriter(Initializable):
 
         assert output_dim == width*height
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N)
+        self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.z_trafo = Linear(
                 name=self.name+'_ztrafo',
                 input_dim=input_dim, output_dim=5, 
