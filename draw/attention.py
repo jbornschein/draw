@@ -98,11 +98,8 @@ class ZoomableAttentionWindow(object):
         channels = self.channels
         batch_size = images.shape[0]
 
-        images = images.reshape([batch_size*channels, -1])
-        
-
         # Reshape input into proper 2d images
-        I = images.reshape( (batch_size, self.img_height, self.img_width) )
+        I = images.reshape( (batch_size*channels, self.img_height, self.img_width) )
 
         # Get separable filterbank
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
@@ -174,11 +171,12 @@ if __name__ == "__main__":
     from PIL import Image
 
     N = 40 
+    channels = 3
     height = 480
     width =  640
 
     #------------------------------------------------------------------------
-    att = ZoomableAttentionWindow(1, height, width, N)
+    att = ZoomableAttentionWindow(channels, height, width, N)
 
     I_ = T.matrix()
     center_y_ = T.vector()
@@ -203,9 +201,10 @@ if __name__ == "__main__":
     #------------------------------------------------------------------------
 
     I = Image.open("cat.jpg")
-    I = I.resize((640, 480)).convert('L')
+    I = I.resize((640, 480)) #.convert('L')
     
-    I = np.asarray(I).reshape( (width*height) )
+    I = np.asarray(I).transpose([2, 0, 1])
+    I = I.reshape( (channels*width*height) )
     I = I / 255.
 
     center_y = 200.5
@@ -223,19 +222,25 @@ if __name__ == "__main__":
 
     W  = do_read(I, center_y, center_x, delta, sigma)
     I2 = do_write(W, center_y, center_x, delta, sigma)
+
+    def imagify(flat_image, h, w):
+        image = flat_image.reshape([channels, h, w])
+        image = image.transpose([1, 2, 0])
+        return image / image.max()
+
     
     import pylab
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(imagify(I, height, width), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(W.reshape([N, N]), interpolation='nearest')
+    pylab.imshow(imagify(W, N, N), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I2.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(imagify(I2, height, width), interpolation='nearest')
     pylab.show(block=True)
     
     import ipdb; ipdb.set_trace()
