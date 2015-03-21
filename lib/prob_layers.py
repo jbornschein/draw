@@ -9,7 +9,7 @@ import theano
 from theano import tensor
 
 from blocks.bricks.base import application, _Brick, Brick, lazy
-from blocks.roles import add_role, WEIGHTS, BIASES
+from blocks.roles import add_role, WEIGHT, BIAS
 from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
 from blocks.utils import pack, shared_floatx_zeros
 
