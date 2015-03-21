@@ -30,16 +30,18 @@ def my_batched_dot(A, B):
 #-----------------------------------------------------------------------------
 
 class ZoomableAttentionWindow(object):
-    def __init__(self, img_height, img_width, N):
+    def __init__(self, channels, img_height, img_width, N):
         """A zoomable attention window for images.
 
         Parameters
         ----------
+        channels : int
         img_heigt, img_width : int
             shape of the images 
         N : 
             $N \times N$ attention window size
         """
+        self.channels = channels
         self.img_height = img_height
         self.img_width = img_width
         self.N = N
@@ -93,7 +95,11 @@ class ZoomableAttentionWindow(object):
         window : T.matrix   (shape: batch_size x N**2)
         """
         N = self.N
+        channels = self.channels
         batch_size = images.shape[0]
+
+        images = images.reshape([batch_size*channels, -1])
+        
 
         # Reshape input into proper 2d images
         I = images.reshape( (batch_size, self.img_height, self.img_width) )
@@ -101,25 +107,32 @@ class ZoomableAttentionWindow(object):
         # Get separable filterbank
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
+        FY = T.repeat(FY, channels, axis=0)
+        FX = T.repeat(FX, channels, axis=0)
+
         # apply to the batch of images
         W = my_batched_dot(my_batched_dot(FY, I), FX.transpose([0,2,1]))
 
-        return W.reshape((batch_size, N*N))
+        return W.reshape((batch_size, channels*N*N))
 
     def write(self, windows, center_y, center_x, delta, sigma):
         N = self.N
+        channels = self.channels
         batch_size = windows.shape[0]
 
         # Reshape input into proper 2d windows
-        W = windows.reshape( (batch_size, N, N) )
+        W = windows.reshape( (batch_size*channels, N, N) )
 
         # Get separable filterbank
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
+        FY = T.repeat(FY, channels, axis=0)
+        FX = T.repeat(FX, channels, axis=0)
+
         # apply...
         I = my_batched_dot(my_batched_dot(FY.transpose([0,2,1]), W), FX)
 
-        return I.reshape( (batch_size, self.img_height*self.img_width) )
+        return I.reshape( (batch_size, channels*self.img_height*self.img_width) )
 
     def nn2att(self, l):
         """Convert neural-net outputs to attention parameters
@@ -165,7 +178,7 @@ if __name__ == "__main__":
     width =  640
 
     #------------------------------------------------------------------------
-    att = ZoomableAttentionWindow(height, width, N)
+    att = ZoomableAttentionWindow(1, height, width, N)
 
     I_ = T.matrix()
     center_y_ = T.vector()
