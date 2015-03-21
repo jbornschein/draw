@@ -33,14 +33,14 @@ from blocks.extensions.saveload import Checkpoint, Dump
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks import Tanh, Identity
+from blocks.bricks import Identity
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
 from draw import *
 
-
 fuel.config.floatX = theano.config.floatX
+
 
 def get_data(dataset, batch_size):
     if dataset == "bmnist":
@@ -50,14 +50,9 @@ def get_data(dataset, batch_size):
         ds_valid = BinarizedMNIST("valid", sources=['features'])
         ds_test = BinarizedMNIST("test", sources=['features'])
 
-        width, height = 28, 28
+        channels, width, height = 1, 28, 28
     elif dataset == "cifar10":
-        from fuel.datasets.cifar10 import CIFAR10
-            
-        ds_train = CIFAR10("train", sources=['features'])
-        ds_test = CIFAR10("test", sources=['features'])
-
-        width, height = 32, 32
+        channels, width, height = 1, 32, 32
     else:
         raise ValueError("Unknown dataset %s" % data)
 
@@ -69,6 +64,7 @@ def get_data(dataset, batch_size):
                 )) for ds in (ds_train, ds_test)]
 
     return [width, height]+streams
+
 
 def float_tag(value):
     """ Convert a float into a short tag-usable string representation. E.g.:
@@ -85,12 +81,6 @@ def float_tag(value):
 def main(name, epochs, learning_rate, dataset, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
 
-    if name is None:
-        name = dataset
-
-    img_width, img_height, train_stream, test_stream = get_data(dataset, 100)
-    x_dim = img_width*img_height
-    
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
@@ -101,19 +91,55 @@ def main(name, epochs, learning_rate, dataset,
         'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
-    
+
+    # Load datasets and create streams
+    if dataset == 'bmnist':
+        from fuel.datasets.binarized_mnist import BinarizedMNIST
+
+        channels, img_height, img_width = 1, 28, 28
+
+        train_ds = BinarizedMNIST("train", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'])
+        #ds_valid = BinarizedMNIST("valid", sources=['features'])
+    elif dataset == 'cifar10':
+        from fuel.datasets.cifar10 import CIFAR10
+
+        channels, img_height, img_width = 3, 32, 32
+            
+        train_ds = CIFAR10("train", sources=['features'])
+        test_ds = CIFAR10("test", sources=['features'])
+    else:
+        raise ValueError("Unknown dataset %s" % data)
+
+    batch_size = 100
+    train_stream = DataStream(
+                    train_ds,
+                    iteration_scheme=SequentialScheme(
+                        train_ds.num_examples, 
+                        batch_size))
+
+    test_stream = DataStream(
+                    test_ds,
+                    iteration_scheme=SequentialScheme(
+                        test_ds.num_examples, 
+                        batch_size))
+
+   
+    x_dim = channels*img_width*img_height  # a single flattened datapoint
+
+    # Configure attention mechanism
     if attention != "":
         read_N, write_N = attention.split(',')
     
         read_N = int(read_N)
         write_N = int(write_N)
-        read_dim = 2*read_N**2
+        read_dim = 2*channels*read_N**2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=read_N, **inits)
         writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=write_N, **inits)
         attention_tag = "r%d-w%d" % (read_N, write_N)
     else:
@@ -122,22 +148,7 @@ def main(name, epochs, learning_rate, dataset,
         reader = Reader(x_dim=x_dim, dec_dim=dec_dim, **inits)
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
 
-        attention_tag = "full"
-
-    #----------------------------------------------------------------------
-
-    # Learning rate
-    lr_str = float_tag(learning_rate)
-    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
-
-    print("\nRunning experiment %s" % name)
-    print("         learning rate: %5.3f" % learning_rate) 
-    print("             attention: %s" % attention)
-    print("          n_iterations: %d" % n_iter)
-    print("     encoder dimension: %d" % enc_dim)
-    print("           z dimension: %d" % z_dim)
-    print("     decoder dimension: %d" % dec_dim)
-    print()
+        attention_tag = "noatt"
 
     #----------------------------------------------------------------------
 
@@ -158,18 +169,28 @@ def main(name, epochs, learning_rate, dataset,
                 writer=writer)
     draw.initialize()
 
+    #----------------------------------------------------------------------
+
+    if name is None:
+        name = dataset
+
+    lr_tag = float_tag(learning_rate)
+    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_tag)
+
+    print("\nRunning experiment %s" % name)
+    print("         learning rate: %5.3f" % learning_rate) 
+    print("             attention: %s" % attention)
+    print("          n_iterations: %d" % n_iter)
+    print("     encoder dimension: %d" % enc_dim)
+    print("           z dimension: %d" % z_dim)
+    print("     decoder dimension: %d" % dec_dim)
+    print()
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
+    x = x / 255.
     
-    #x_recons = 1. + x
     x_recons, kl_terms = draw.reconstruct(x)
-    #x_recons, _, _, _, _ = draw.silly(x, n_steps=10, batch_size=100)
-    #x_recons = x_recons[-1,:,:]
-
-    #samples = draw.sample(100) 
-    #x_recons = samples[-1, :, :]
-    #x_recons = samples[-1, :, :]
 
     recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
@@ -191,8 +212,6 @@ def main(name, epochs, learning_rate, dataset,
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
-    #algorithm.add_updates(scan_updates)
-
 
     #------------------------------------------------------------------------
     # Setup monitors
@@ -231,7 +250,7 @@ def main(name, epochs, learning_rate, dataset,
             TrainingDataMonitoring(
                 train_monitors, 
                 prefix="train",
-                after_every_epoch=True),
+                after_epoch=True),
 #            DataStreamMonitoring(
 #                monitors,
 #                valid_stream,

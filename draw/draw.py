@@ -149,7 +149,7 @@ class AttentionReader(Initializable):
         self.N = N
         self.x_dim = x_dim
         self.dec_dim = dec_dim
-        self.output_dim = 2*N*N
+        self.output_dim = 2*channels*N*N
 
         self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
@@ -210,7 +210,7 @@ class AttentionWriter(Initializable):
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-        assert output_dim == width*height
+        assert output_dim == channels*width*height
 
         self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.z_trafo = Linear(
@@ -221,7 +221,7 @@ class AttentionWriter(Initializable):
 
         self.w_trafo = Linear(
                 name=self.name+'_wtrafo',
-                input_dim=input_dim, output_dim=N*N, 
+                input_dim=input_dim, output_dim=channels*N*N, 
                 weights_init=self.weights_init, biases_init=self.biases_init,
                 use_bias=True)
 
