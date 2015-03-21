@@ -20,7 +20,6 @@ from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets.binarized_mnist import BinarizedMNIST
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -43,12 +42,54 @@ from draw import *
 
 fuel.config.floatX = theano.config.floatX
 
+def get_data(dataset, batch_size):
+    if dataset == "bmnist":
+        from fuel.datasets.binarized_mnist import BinarizedMNIST
+
+        ds_train = BinarizedMNIST("train", sources=['features'])
+        ds_valid = BinarizedMNIST("valid", sources=['features'])
+        ds_test = BinarizedMNIST("test", sources=['features'])
+
+        width, height = 28, 28
+    elif dataset == "cifar10":
+        from fuel.datasets.cifar10 import CIFAR10
+            
+        ds_train = CIFAR10("train", sources=['features'])
+        ds_test = CIFAR10("test", sources=['features'])
+
+        width, height = 32, 32
+    else:
+        raise ValueError("Unknown dataset %s" % data)
+
+    streams = [DataStream(
+                ds,
+                iteration_scheme=SequentialScheme(
+                    ds.num_examples, 
+                    batch_size
+                )) for ds in (ds_train, ds_test)]
+
+    return [width, height]+streams
+
+def float_tag(value):
+    """ Convert a float into a short tag-usable string representation. E.g.:
+        0.1   -> 11
+        0.01  -> 12
+        0.001 -> 13
+        0.005 -> 53
+    """
+    exp = np.floor(np.log10(value))
+    leading = ("%e"%value)[0]
+    return "%s%d" % (leading, -exp)
+
 #----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, 
+def main(name, epochs, learning_rate, dataset, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
 
-    x_dim = 28*28
-    img_height, img_width = (28, 28)
+    if name is None:
+        name = dataset
+
+    img_width, img_height, train_stream, test_stream = get_data(dataset, 100)
+    x_dim = img_width*img_height
     
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -86,18 +127,7 @@ def main(name, epochs, batch_size, learning_rate,
     #----------------------------------------------------------------------
 
     # Learning rate
-    def lr_tag(value):
-        """ Convert a float into a short tag-usable string representation. E.g.:
-            0.1   -> 11
-            0.01  -> 12
-            0.001 -> 13
-            0.005 -> 53
-        """
-        exp = np.floor(np.log10(value))
-        leading = ("%e"%value)[0]
-        return "%s%d" % (leading, -exp)
-
-    lr_str = lr_tag(learning_rate)
+    lr_str = float_tag(learning_rate)
     name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
     print("\nRunning experiment %s" % name)
@@ -191,14 +221,6 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    mnist_train = BinarizedMNIST("train", sources=['features'])
-    mnist_valid = BinarizedMNIST("valid", sources=['features'])
-    mnist_test = BinarizedMNIST("test", sources=['features'])
-
-    train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
-    valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-    test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
-
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=train_stream,
@@ -232,11 +254,11 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist", help="Name for this experiment")
+                default=None, help="Name for this experiment")
+    parser.add_argument("--dataset", "--data", type=str, dest="dataset",
+                default="bmnist", help="Dataset to use: [bmnist|cifar10]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
-    parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
-                default=100, help="Size of each mini-batch")
     parser.add_argument("--lr", "--learning-rate", type=float, dest="learning_rate",
                 default=1e-3, help="Learning rate")
     parser.add_argument("--attention", "-a", type=str, default="",
