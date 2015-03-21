@@ -25,7 +25,7 @@ from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSP
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
-from blocks.roles import WEIGHTS, BIASES, PARAMETER
+from blocks.roles import PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.plot import Plot
