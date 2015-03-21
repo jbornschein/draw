@@ -209,7 +209,7 @@ def main(name, epochs, batch_size, learning_rate,
             TrainingDataMonitoring(
                 train_monitors, 
                 prefix="train",
-                after_every_epoch=True),
+                after_epoch=True),
 #            DataStreamMonitoring(
 #                monitors,
 #                valid_stream,
