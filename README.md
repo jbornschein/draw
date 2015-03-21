@@ -1,8 +1,19 @@
 
-Reimplementation of the DRAW paper
-==================================
+Reimplementation of the DRAW network architecture
+=================================================
 
-Original paper is at http://arxiv.org/pdf/1502.04623
+This repository contains a reimplementation of the Deep Recurrent Attentive
+Writer (DRAW) network architecture introduced by K. Gregor, I. Danihelka,
+A. Graves and D. Wierstra. The original paper can be found at
+
+  http://arxiv.org/pdf/1502.04623
+
+
+Dependencies
+------------
+ * [Theano](https://github.com/theano/Theano)
+ * [Blocks](https://github.com/bartvm/blocks)
+ * [Fuel](https://github.com/bartvm/fuel)
 
 
 With attention
