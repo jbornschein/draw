@@ -40,6 +40,9 @@ from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 
 from draw import *
 
+import sys
+sys.path.append("../datasets")
+from binarized_sketch import BinarizedSketch
 
 fuel.config.floatX = theano.config.floatX
 
@@ -47,8 +50,14 @@ fuel.config.floatX = theano.config.floatX
 def main(name, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
 
-    x_dim = 28*28
-    img_height, img_width = (28, 28)
+    if name == 'mnist':
+        x_dim = 28*28
+        img_height, img_width = (28, 28)
+    elif name == 'shrec':
+        x_dim = 56*56
+        img_height, img_width = (56, 56)
+    else:
+        raise Exception('Unknown name %s'%name)
     
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -191,13 +200,21 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    mnist_train = BinarizedMNIST("train", sources=['features'])
-    mnist_valid = BinarizedMNIST("valid", sources=['features'])
-    mnist_test = BinarizedMNIST("test", sources=['features'])
+    if name == 'mnist':
+        mnist_train = BinarizedMNIST("train", sources=['features'])
+        # mnist_valid = BinarizedMNIST("valid", sources=['features'])
+        mnist_test = BinarizedMNIST("test", sources=['features'])
+        train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
+        # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
+        test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
+    elif name == 'shrec':
+        shrec_train = BinarizedSketch("train", sources=['features'])
+        shrec_test = BinarizedSketch("test", sources=['features'])
+        train_stream = DataStream(shrec_train, iteration_scheme=SequentialScheme(shrec_train.num_examples, batch_size))
+        test_stream  = DataStream(shrec_test,  iteration_scheme=SequentialScheme(shrec_test.num_examples, batch_size))
+    else:
+        raise Exception('Unknown name %s'%name)
 
-    train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
-    valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-    test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
 
     main_loop = MainLoop(
         model=Model(cost),

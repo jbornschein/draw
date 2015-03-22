@@ -70,7 +70,7 @@ if __name__ == "__main__":
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-     if isinstance(p, MainLoop):
+    if isinstance(p, MainLoop):
         model = p.model
     elif isinstance(p, AbstractModel):
         model = p
