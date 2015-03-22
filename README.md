@@ -58,7 +58,7 @@ With
     # this takes some time
     python sample.py [pickle-of-entire-main-loop]
     # this requires ImageMagick to be installed
-    convert -delay 10 -loop 0 samples-*.png animaion.gif
+    convert -delay 5 -loop 0 samples-*.png animaion.gif
 you can create samples similar to 
 
  ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
