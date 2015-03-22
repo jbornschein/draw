@@ -50,14 +50,15 @@ fuel.config.floatX = theano.config.floatX
 def main(name, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim):
 
-    if name == 'mnist':
+    datasource = name
+    if datasource == 'mnist':
         x_dim = 28*28
         img_height, img_width = (28, 28)
-    elif name == 'sketch':
+    elif datasource == 'sketch':
         x_dim = 56*56
         img_height, img_width = (56, 56)
     else:
-        raise Exception('Unknown name %s'%name)
+        raise Exception('Unknown name %s'%datasource)
     
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -200,20 +201,20 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    if name == 'mnist':
+    if datasource == 'mnist':
         mnist_train = BinarizedMNIST("train", sources=['features'])
         # mnist_valid = BinarizedMNIST("valid", sources=['features'])
         mnist_test = BinarizedMNIST("test", sources=['features'])
         train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
         # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
         test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
-    elif name == 'sketch':
+    elif datasource == 'sketch':
         sketch_train = BinarizedSketch("train", sources=['features'])
         sketch_test = BinarizedSketch("test", sources=['features'])
         train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
         test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
     else:
-        raise Exception('Unknown name %s'%name)
+        raise Exception('Unknown name %s'%datasource)
 
 
     main_loop = MainLoop(
