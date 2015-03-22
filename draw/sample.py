@@ -9,7 +9,10 @@ import cPickle as pickle
 
 import numpy as np
 
+
 from PIL import Image
+from blocks.main_loop import MainLoop
+from blocks.model import AbstractModel
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -65,9 +68,16 @@ if __name__ == "__main__":
 
     logging.info("Loading file %s..." % args.model_file)
     with open(args.model_file, "rb") as f:
-        main = pickle.load(f)
+        p = pickle.load(f)
 
-    model = main.model
+     if isinstance(p, MainLoop):
+        model = p.model
+    elif isinstance(p, AbstractModel):
+        model = p
+    else: 
+        print("Don't know how to handle unpickled %s" % type(p))
+        exit(1)
+
     draw = model.get_top_bricks()[0]
 
     #------------------------------------------------------------

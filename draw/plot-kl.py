@@ -30,7 +30,7 @@ if __name__ == "__main__":
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-    if  isinstance(p, MainLoop):
+    if isinstance(p, MainLoop):
         log = p.log
     elif isinstance(p, AbstractTrainingLog):
         log = p
