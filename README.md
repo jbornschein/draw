@@ -17,20 +17,35 @@ the [install instructions](http://blocks.readthedocs.org/en/latest/setup.html) w
  * [Fuel](https://github.com/bartvm/fuel)
  * [picklable_itertools](https://github.com/dwf/picklable_itertools)
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
+ * [ipdb](https://pypi.python.org/pypi/ipdb)
 
 Data
 ----
- * [MNIST](http://blocks.readthedocs.org/en/latest/tutorial.html#training-your-model)
- * [binarized MNIST](https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py)
+You need to set the location of your data directory:
 
-With attention
---------------
+    echo "data_path: /home/user/data" >> ~/.fuelrc
+
+You need to download binarized MNIST data:
+
+    export PYLEARN2_DATA_PATH=/home/user/data
+    wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
+    python download_binarized_mnist.py
+
+Training with attention
+-----------------------
+Before training you need to start the bokeh-server
+
+    bokeh-server
+or
+
+    boke-server --ip 0.0.0.0
 
 To train a model with a 2x2 read and a 5x5 write attention window run
 
-  ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
+    ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
 
-You can have [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html) while the process is running.
+It takes more than 40min for Theano compilation to end and training to start. Once training starts you can track its
+[live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 1 day to train and will create samples similar to 
 
  ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
