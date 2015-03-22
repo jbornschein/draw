@@ -96,7 +96,7 @@ def main(name, epochs, learning_rate, dataset,
     if dataset == 'bmnist':
         from fuel.datasets.binarized_mnist import BinarizedMNIST
 
-        channels, img_width, img_width = 1, 28, 28
+        channels, img_height, img_width = 1, 28, 28
 
         train_ds = BinarizedMNIST("train", sources=['features'])
         test_ds = BinarizedMNIST("test", sources=['features'])
@@ -104,13 +104,14 @@ def main(name, epochs, learning_rate, dataset,
     elif dataset == 'cifar10':
         from fuel.datasets.cifar10 import CIFAR10
 
-        channels, img_width, img_width = 3, 32, 32
+        channels, img_height, img_width = 3, 32, 32
             
         train_ds = CIFAR10("train", sources=['features'])
         test_ds = CIFAR10("test", sources=['features'])
     else:
         raise ValueError("Unknown dataset %s" % data)
 
+    batch_size = 100
     train_stream = DataStream(
                     train_ds,
                     iteration_scheme=SequentialScheme(
