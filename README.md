@@ -44,9 +44,22 @@ To train a model with a 2x2 read and a 5x5 write attention window run
 
     ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
 
-It takes more than 40min for Theano compilation to end and training to start. Once training starts you can track its
+On Amazon g2xlarge it takes more than 40min for Theano compilation to end and training to start. Once training starts you can track its
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
-It will take about 1 day to train and will create samples similar to 
+It will take about 2 day to train and will 3 `pkl` files.
+A [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34.pkl)
+of the [enitre main loop](http://blocks.readthedocs.org/en/latest/api/main_loop.html#blocks.main_loop.MainLoop),
+a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model
+and a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
+of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog).
+
+With
+
+    # this takes some time
+    python sample.py [pickle-of-entire-main-loop]
+    # this requires ImageMagick to be installed
+    convert -delay 10 -loop 0 samples-*.png animaion.gif
+you can create samples similar to 
 
  ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 
