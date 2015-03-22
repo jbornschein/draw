@@ -53,7 +53,7 @@ def main(name, epochs, batch_size, learning_rate,
     if name == 'mnist':
         x_dim = 28*28
         img_height, img_width = (28, 28)
-    elif name == 'shrec':
+    elif name == 'sketch':
         x_dim = 56*56
         img_height, img_width = (56, 56)
     else:
@@ -207,11 +207,11 @@ def main(name, epochs, batch_size, learning_rate,
         train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
         # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
         test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
-    elif name == 'shrec':
-        shrec_train = BinarizedSketch("train", sources=['features'])
-        shrec_test = BinarizedSketch("test", sources=['features'])
-        train_stream = DataStream(shrec_train, iteration_scheme=SequentialScheme(shrec_train.num_examples, batch_size))
-        test_stream  = DataStream(shrec_test,  iteration_scheme=SequentialScheme(shrec_test.num_examples, batch_size))
+    elif name == 'sketch':
+        sketch_train = BinarizedSketch("train", sources=['features'])
+        sketch_test = BinarizedSketch("test", sources=['features'])
+        train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
+        test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
     else:
         raise Exception('Unknown name %s'%name)
 
