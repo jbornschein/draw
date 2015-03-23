@@ -64,6 +64,8 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--size", type=int,
+                default=28, help="Output image size (width and height)")
     args = parser.parse_args()
 
     logging.info("Loading file %s..." % args.model_file)
@@ -96,7 +98,7 @@ if __name__ == "__main__":
 
     n_iter, N, D = samples.shape
 
-    samples = samples.reshape( (n_iter, N, 28, 28) ) 
+    samples = samples.reshape( (n_iter, N, args.size, args.size) )
     
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
