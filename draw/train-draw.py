@@ -143,7 +143,7 @@ def main(name, epochs, batch_size, learning_rate,
         print("Initializing parameters with old model %s"%oldmodel)
         with open(oldmodel, "rb") as f:
             oldmodel = pickle.load(f)
-            draw.params = oldmodel.params
+            draw.set_param_values(oldmodel.get_param_values())
         del oldmodel
 
     #------------------------------------------------------------------------
