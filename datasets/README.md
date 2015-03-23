@@ -18,3 +18,10 @@ The original sketch png files are converted to numpy npy files with
 [Sketch.ipynb](http://nbviewer.ipython.org/github/udibr/draw/blob/master/datasets/Sketch.ipynb)
 
 The two npy files created should be placed in the directory binarized_sketch in fuel data directory
+
+To learning and generating images works like this
+
+    cd ../draw
+    python train-draw.py --name=sketch --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
+    python sample.py --size=56 sketch-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl
+    convert -delay 5 -loop 1 samples-*.png sketch.gif
