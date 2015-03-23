@@ -32,6 +32,6 @@ To learning and generating images works like this
     
 This is the best result I got so far
 
- ![generated sketches](https://s3.amazonaws.com/udidraw/sketch.gif)
+ ![generated sketches](http://s3.amazonaws.com/udidraw/sketch.gif)
 
 (not so good so far...)
