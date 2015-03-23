@@ -29,10 +29,10 @@ To learn and generate images do
     cd ../draw
     python train-draw.py --name=sketch --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
     python sample.py --size=56 sketch-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl
-    convert -delay 5 -loop 1 -negate samples-*.png sketch.gif
+    convert -delay 5 -loop 1 -negate  -resize 50% samples-*.png sketch.gif
     
 This is the best result I got so far
 
- ![generated sketches](../doc/sketch-r2-w5-t64-enc256-dec256-z100-lr34.gif)
+ ![generated sketches](https://s3.amazonaws.com/udidraw/sketch-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 
 Not so good... after 100 epochs train_nll_bound: 510.7 test_nll_bound: 542.5
