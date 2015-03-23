@@ -139,13 +139,6 @@ def main(name, epochs, batch_size, learning_rate,
                 writer=writer)
     draw.initialize()
 
-    if oldmodel is not None:
-        print("Initializing parameters with old model %s"%oldmodel)
-        with open(oldmodel, "rb") as f:
-            oldmodel = pickle.load(f)
-            draw.set_param_values(oldmodel.get_param_values())
-        del oldmodel
-
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
     
@@ -250,6 +243,12 @@ def main(name, epochs, batch_size, learning_rate,
             Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
+    if oldmodel is not None:
+        print("Initializing parameters with old model %s"%oldmodel)
+        with open(oldmodel, "rb") as f:
+            oldmodel = pickle.load(f)
+            main_loop.model.set_param_values(oldmodel.get_param_values())
+        del oldmodel
     main_loop.run()
 
 #-----------------------------------------------------------------------------
