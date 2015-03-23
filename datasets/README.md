@@ -35,4 +35,4 @@ This is the best result I got so far
 
  ![generated sketches](../doc/sketch-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 
-(not so good...)
+Not so good... after 100 epochs train_nll_bound: 510.7 test_nll_bound: 542.5

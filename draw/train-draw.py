@@ -37,6 +37,7 @@ from blocks.model import Model
 from blocks.bricks import Tanh, Identity
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
+import cPickle as pickle
 
 from draw import *
 
@@ -48,7 +49,7 @@ fuel.config.floatX = theano.config.floatX
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim):
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
 
     datasource = name
     if datasource == 'mnist':
@@ -138,6 +139,12 @@ def main(name, epochs, batch_size, learning_rate,
                 writer=writer)
     draw.initialize()
 
+    if oldmodel is not None:
+        print("Initializing parameters with old model %s"%oldmodel)
+        with open(oldmodel, "rb") as f:
+            oldmodel = pickle.load(f)
+            draw.params = oldmodel.params
+        del oldmodel
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
@@ -267,6 +274,8 @@ if __name__ == "__main__":
                 default=256, help="Decoder  RNN state dimension")
     parser.add_argument("--z-dim", type=int, dest="z_dim",
                 default=100, help="Z-vector dimension")
+    parser.add_argument("--oldmodel", type=str,
+                help="Use a model pkl file created by a previous run as a starting point for all parameters")
     args = parser.parse_args()
 
     main(**vars(args))

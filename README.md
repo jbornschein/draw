@@ -32,7 +32,7 @@ You need to download binarized MNIST data:
     wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
     python download_binarized_mnist.py
     
-The [README](./datasets/README.md) file in the datasets directory has instructions for additional data-sets.
+The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
 
 Training with attention
 -----------------------
