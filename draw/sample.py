@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image
 from blocks.main_loop import MainLoop
 from blocks.model import AbstractModel
+from blocks import config
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -81,6 +82,9 @@ if __name__ == "__main__":
         exit(1)
 
     draw = model.get_top_bricks()[0]
+    # reset the random generator
+    del draw._theano_rng
+    draw.seed_rng = np.random.RandomState(config.default_seed)
 
     #------------------------------------------------------------
     logging.info("Compiling sample function...")
