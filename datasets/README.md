@@ -35,5 +35,9 @@ This is the best result I got so far
 
  ![generated sketches](https://s3.amazonaws.com/udidraw/sketch-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 
-Not so good... after 100 epochs train_nll_bound: 510.7 test_nll_bound: 542.5, after 200 train was 467.6.
+Not so good... after 100 epochs train_nll_bound: 510.7 test_nll_bound: 542.5, after 200 train was 467.6. after 300 test_nll_bound: 456.5
+
 For attention=4,10 after 100 epochs train_nll_bound: 524.8 test_nll_bound: 536.2
+and this is the best result I got so far
+
+ ![generated sketches](https://s3.amazonaws.com/udidraw/sketch-r4-w10-t100-enc256-dec256-z100-lr34.gif)

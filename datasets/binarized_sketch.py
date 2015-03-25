@@ -34,7 +34,7 @@ class BinarizedSketch(IndexableDataset):
     Parameters
     ----------
     which_set : 'train' or 'test'
-        Whether to load the training set (19000 samples) or the test set (1000 samples).
+        Whether to load the training set (18000 samples) or the test set (2000 samples).
     """
     provides_sources = ('features',)
     folder = 'binarized_sketch'
