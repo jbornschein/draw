@@ -84,6 +84,7 @@ if __name__ == "__main__":
     draw = model.get_top_bricks()[0]
     # reset the random generator
     del draw._theano_rng
+    del draw._theano_seed
     draw.seed_rng = np.random.RandomState(config.default_seed)
 
     #------------------------------------------------------------
