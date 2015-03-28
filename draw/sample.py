@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image
 from blocks.main_loop import MainLoop
 from blocks.model import AbstractModel
+from blocks import config
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -64,13 +65,15 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--size", type=int,
+                default=28, help="Output image size (width and height)")
     args = parser.parse_args()
 
     logging.info("Loading file %s..." % args.model_file)
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-     if isinstance(p, MainLoop):
+    if isinstance(p, MainLoop):
         model = p.model
     elif isinstance(p, AbstractModel):
         model = p
@@ -79,6 +82,10 @@ if __name__ == "__main__":
         exit(1)
 
     draw = model.get_top_bricks()[0]
+    # reset the random generator
+    del draw._theano_rng
+    del draw._theano_seed
+    draw.seed_rng = np.random.RandomState(config.default_seed)
 
     #------------------------------------------------------------
     logging.info("Compiling sample function...")
@@ -96,7 +103,7 @@ if __name__ == "__main__":
 
     n_iter, N, D = samples.shape
 
-    samples = samples.reshape( (n_iter, N, 28, 28) ) 
+    samples = samples.reshape( (n_iter, N, args.size, args.size) )
     
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])

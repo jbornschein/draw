@@ -31,6 +31,8 @@ You need to download binarized MNIST data:
     export PYLEARN2_DATA_PATH=/home/user/data
     wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
     python download_binarized_mnist.py
+    
+The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
 
 Training with attention
 -----------------------
@@ -45,7 +47,7 @@ To train a model with a 2x2 read and a 5x5 write attention window run
 
     ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
 
-On Amazon g2xlarge it takes more than 40min for Theano to compilation to end and training to start. Once training starts you can track its
+On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. Once training starts you can track its
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 2 days to train the model. After each epoch it will save 3 `pkl` files:
  * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34.pkl)
@@ -59,8 +61,7 @@ With
 
     python sample.py [pickle-of-model]
     # this requires ImageMagick to be installed
-    convert -delay 10 -loop 0 samples-*.png animaion.gif
-
+    convert -delay 5 -loop 0 samples-*.png animaion.gif
 you can create samples similar to 
 
  ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)

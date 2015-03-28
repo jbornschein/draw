@@ -37,18 +37,29 @@ from blocks.model import Model
 from blocks.bricks import Tanh, Identity
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
+import cPickle as pickle
 
 from draw import *
 
+import sys
+sys.path.append("../datasets")
+from binarized_sketch import BinarizedSketch
 
 fuel.config.floatX = theano.config.floatX
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim):
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
 
-    x_dim = 28*28
-    img_height, img_width = (28, 28)
+    datasource = name
+    if datasource == 'mnist':
+        x_dim = 28*28
+        img_height, img_width = (28, 28)
+    elif datasource == 'sketch':
+        x_dim = 56*56
+        img_height, img_width = (56, 56)
+    else:
+        raise Exception('Unknown name %s'%datasource)
     
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -128,7 +139,6 @@ def main(name, epochs, batch_size, learning_rate,
                 writer=writer)
     draw.initialize()
 
-
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
     
@@ -191,13 +201,21 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    mnist_train = BinarizedMNIST("train", sources=['features'])
-    mnist_valid = BinarizedMNIST("valid", sources=['features'])
-    mnist_test = BinarizedMNIST("test", sources=['features'])
+    if datasource == 'mnist':
+        mnist_train = BinarizedMNIST("train", sources=['features'])
+        # mnist_valid = BinarizedMNIST("valid", sources=['features'])
+        mnist_test = BinarizedMNIST("test", sources=['features'])
+        train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
+        # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
+        test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
+    elif datasource == 'sketch':
+        sketch_train = BinarizedSketch("train", sources=['features'])
+        sketch_test = BinarizedSketch("test", sources=['features'])
+        train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
+        test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
+    else:
+        raise Exception('Unknown name %s'%datasource)
 
-    train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
-    valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-    test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
 
     main_loop = MainLoop(
         model=Model(cost),
@@ -225,6 +243,12 @@ def main(name, epochs, batch_size, learning_rate,
             Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
+    if oldmodel is not None:
+        print("Initializing parameters with old model %s"%oldmodel)
+        with open(oldmodel, "rb") as f:
+            oldmodel = pickle.load(f)
+            main_loop.model.set_param_values(oldmodel.get_param_values())
+        del oldmodel
     main_loop.run()
 
 #-----------------------------------------------------------------------------
@@ -249,6 +273,8 @@ if __name__ == "__main__":
                 default=256, help="Decoder  RNN state dimension")
     parser.add_argument("--z-dim", type=int, dest="z_dim",
                 default=100, help="Z-vector dimension")
+    parser.add_argument("--oldmodel", type=str,
+                help="Use a model pkl file created by a previous run as a starting point for all parameters")
     args = parser.parse_args()
 
     main(**vars(args))
