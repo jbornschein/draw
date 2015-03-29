@@ -202,9 +202,9 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------
 
     if datasource == 'mnist':
-        mnist_train = BinarizedMNIST("train", sources=['features'])
+        mnist_train = BinarizedMNIST("train", sources=['features'], flatten=['features'])
         # mnist_valid = BinarizedMNIST("valid", sources=['features'])
-        mnist_test = BinarizedMNIST("test", sources=['features'])
+        mnist_test = BinarizedMNIST("test", sources=['features'], flatten=['features'])
         train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
         # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
         test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
