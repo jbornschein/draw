@@ -21,6 +21,7 @@ from theano import tensor
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.binarized_mnist import BinarizedMNIST
+from fuel.datasets import H5PYDataset
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -49,18 +50,24 @@ fuel.config.floatX = theano.config.floatX
 
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
     datasource = name
     if datasource == 'mnist':
         x_dim = 28*28
         img_height, img_width = (28, 28)
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%datasource)
     elif datasource == 'sketch':
         x_dim = 56*56
         img_height, img_width = (56, 56)
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%datasource)
     else:
-        raise Exception('Unknown name %s'%datasource)
-    
+        if image_size is None:
+            raise Exception('Undefined image size for data source %s'%datasource)
+        x_dim = image_size * image_size
+        img_height = img_width = image_size
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
@@ -214,7 +221,10 @@ def main(name, epochs, batch_size, learning_rate,
         train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
         test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
     else:
-        raise Exception('Unknown name %s'%datasource)
+        datasource_fname = 'data/%s.hdf5'%datasource
+        train_stream = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
+        test_stream = H5PYDataset(datasource_fname, which_set='test', sources=['features'], flatten=['features'])
+        # raise Exception('Unknown name %s'%datasource)
 
 
     main_loop = MainLoop(
@@ -256,7 +266,7 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist", help="Name for this experiment")
+                default="mnist", help="Name for the image dataset")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
@@ -275,6 +285,8 @@ if __name__ == "__main__":
                 default=100, help="Z-vector dimension")
     parser.add_argument("--oldmodel", type=str,
                 help="Use a model pkl file created by a previous run as a starting point for all parameters")
+    parser.add_argument("--sz", "--image-size", type=int, dest="image_size",
+                help="width and height of each image in dataset")
     args = parser.parse_args()
 
     main(**vars(args))
