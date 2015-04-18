@@ -209,22 +209,20 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------
 
     if datasource == 'mnist':
-        mnist_train = BinarizedMNIST("train", sources=['features'], flatten=['features'])
-        # mnist_valid = BinarizedMNIST("valid", sources=['features'])
-        mnist_test = BinarizedMNIST("test", sources=['features'], flatten=['features'])
-        train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
-        # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-        test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
+        train_ds = BinarizedMNIST("train", sources=['features'], flatten=['features'])
+        # valid_ds = BinarizedMNIST("valid", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'], flatten=['features'])
     elif datasource == 'sketch':
-        sketch_train = BinarizedSketch("train", sources=['features'])
-        sketch_test = BinarizedSketch("test", sources=['features'])
-        train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
-        test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
+        train_ds = BinarizedSketch("train", sources=['features'])
+        test_ds = BinarizedSketch("test", sources=['features'])
     else:
         datasource_fname = 'data/%s.hdf5'%datasource
-        train_stream = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
-        test_stream = H5PYDataset(datasource_fname, which_set='test', sources=['features'], flatten=['features'])
+        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
+        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'], flatten=['features'])
         # raise Exception('Unknown name %s'%datasource)
+    train_stream = DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size))
+    # valid_stream = DataStream(valid_ds, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
+    test_stream  = DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size))
 
 
     main_loop = MainLoop(
