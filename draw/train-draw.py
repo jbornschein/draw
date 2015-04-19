@@ -48,6 +48,40 @@ from binarized_sketch import BinarizedSketch
 
 fuel.config.floatX = theano.config.floatX
 
+# from sample import generate_samples
+from blocks.serialization import secure_pickle_dump
+LOADED_FROM = "loaded_from"
+SAVED_TO = "saved_to"
+class MyCheckpoint(Checkpoint):
+    def do(self, callback_name, *args):
+        """Pickle the main loop object to the disk.
+
+        If `*args` contain an argument from user, it is treated as
+        saving path to be used instead of the one given at the
+        construction stage.
+
+        """
+        from_main_loop, from_user = self.parse_args(callback_name, args)
+        try:
+            path = self.path
+            if len(from_user):
+                path, = from_user
+#            already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
+#            self.main_loop.log.current_row[SAVED_TO] = (
+#                already_saved_to + (path,))
+#            secure_pickle_dump(self.main_loop, path)
+            filenames = self.save_separately_filenames(path)
+            for attribute in self.save_separately:
+                p = getattr(self.main_loop, attribute)
+                if p:
+                    secure_pickle_dump(p, filenames[attribute])
+                else:
+                    print("Empty %s",attribute)
+            # generate_samples(self.main_loop, 1202, 'samples')
+        except Exception:
+            self.main_loop.log.current_row[SAVED_TO] = None
+            raise
+
 #----------------------------------------------------------------------------
 def main(name, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
@@ -246,9 +280,9 @@ def main(name, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint(name+".pkl", after_epoch=True, save_separately=['log', 'model']),
+            MyCheckpoint(name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
-            Plot(name, channels=plot_channels),
+            # Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
     if oldmodel is not None:
