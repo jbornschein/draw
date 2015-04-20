@@ -18,19 +18,18 @@ An example of the original sketches:
 
 ![original sketches](http://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/teaser_siggraph.jpg)
 
-The original sketch png files are converted to numpy npy files with 
+The original sketch png files are converted to [fuel's]((http://fuel.readthedocs.org/en/latest/h5py_dataset.html)
+HDF5 files with 
 [Sketch.ipynb](http://nbviewer.ipython.org/github/udibr/draw/blob/master/datasets/Sketch.ipynb).
-You can downlad a tar ball of the npy files from [here](https://s3.amazonaws.com/udidraw/binarized_sketch.tgz).
+You can downlad a tar ball of the npy files from [here](s3://udidraw/sketch.hdf5).
 
-The two npy files created should be placed in the directory binarized_sketch in fuel data directory
+The files created should be placed in the directory `sketch` in fuel data directory
 
 To learn and generate images do
 
     cd ../draw
-    python train-draw.py --name=sketch --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
-    python sample.py --size=56 sketch-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl
-    convert -delay 5 -loop 1 -negate  -resize 50% samples-*.png sketch.gif
-    
+    python train-draw.py --name=sketch --sz=56 --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
+
 This is the best result I got so far
 
  ![generated sketches](https://s3.amazonaws.com/udidraw/sketch-r2-w5-t64-enc256-dec256-z100-lr34.gif)

@@ -9,6 +9,7 @@ FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
+import os
 import theano
 import theano.tensor as T
 import fuel
@@ -240,15 +241,12 @@ def main(name, epochs, batch_size, learning_rate,
 
     if datasource == 'mnist':
         train_ds = BinarizedMNIST("train", sources=['features'], flatten=['features'])
-        # valid_ds = BinarizedMNIST("valid", sources=['features'])
         test_ds = BinarizedMNIST("test", sources=['features'], flatten=['features'])
     else:
-        datasource_fname = 'data/%s.hdf5'%datasource
+        datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
         train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
         test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'], flatten=['features'])
-        # raise Exception('Unknown name %s'%datasource)
     train_stream = DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size))
-    # valid_stream = DataStream(valid_ds, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
     test_stream  = DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size))
 
 
@@ -266,7 +264,7 @@ def main(name, epochs, batch_size, learning_rate,
 #            DataStreamMonitoring(
 #                monitors,
 #                valid_stream,
-##                updates=scan_updates, 
+##                updates=scan_updates,
 #                prefix="valid"),
             DataStreamMonitoring(
                 monitors,
