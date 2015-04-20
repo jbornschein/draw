@@ -19,9 +19,8 @@ An example of the original sketches:
 ![original sketches](http://cybertron.cg.tu-berlin.de/eitz/projects/classifysketch/teaser_siggraph.jpg)
 
 The original sketch png files are converted to [fuel's]((http://fuel.readthedocs.org/en/latest/h5py_dataset.html)
-HDF5 files with 
+HDF5 [file](s3://udidraw/sketch.hdf5) with 
 [Sketch.ipynb](http://nbviewer.ipython.org/github/udibr/draw/blob/master/datasets/Sketch.ipynb).
-You can downlad a tar ball of the npy files from [here](s3://udidraw/sketch.hdf5).
 
 The files created should be placed in the directory `sketch` in fuel data directory
 
