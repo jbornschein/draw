@@ -42,17 +42,18 @@ import cPickle as pickle
 
 from draw import *
 
-import sys
-sys.path.append("../datasets")
-from binarized_sketch import BinarizedSketch
-
 fuel.config.floatX = theano.config.floatX
 
-# from sample import generate_samples
+from sample import generate_samples
 from blocks.serialization import secure_pickle_dump
 LOADED_FROM = "loaded_from"
 SAVED_TO = "saved_to"
 class MyCheckpoint(Checkpoint):
+    def __init__(self, image_size, **kwargs):
+        super(MyCheckpoint, self).__init__(**kwargs)
+
+        self.image_size = image_size
+
     def do(self, callback_name, *args):
         """Pickle the main loop object to the disk.
 
@@ -77,7 +78,7 @@ class MyCheckpoint(Checkpoint):
                     secure_pickle_dump(p, filenames[attribute])
                 else:
                     print("Empty %s",attribute)
-            # generate_samples(self.main_loop, 1202, 'samples')
+            generate_samples(self.main_loop, self.image_size)
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
             raise
@@ -88,20 +89,14 @@ def main(name, epochs, batch_size, learning_rate,
 
     datasource = name
     if datasource == 'mnist':
-        x_dim = 28*28
-        img_height, img_width = (28, 28)
         if image_size is not None:
             raise Exception('image size for data source %s is pre configured'%datasource)
-    elif datasource == 'sketch':
-        x_dim = 56*56
-        img_height, img_width = (56, 56)
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
+        image_size = 28
     else:
         if image_size is None:
             raise Exception('Undefined image size for data source %s'%datasource)
-        x_dim = image_size * image_size
-        img_height = img_width = image_size
+    x_dim = image_size * image_size
+    img_height = img_width = image_size
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
@@ -153,12 +148,13 @@ def main(name, epochs, batch_size, learning_rate,
     name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
     print("\nRunning experiment %s" % name)
-    print("         learning rate: %5.3f" % learning_rate) 
+    print("         learning rate: %g" % learning_rate)
     print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
     print("     encoder dimension: %d" % enc_dim)
     print("           z dimension: %d" % z_dim)
     print("     decoder dimension: %d" % dec_dim)
+    print("            batch size: %d" % batch_size)
     print()
 
     #----------------------------------------------------------------------
@@ -246,9 +242,6 @@ def main(name, epochs, batch_size, learning_rate,
         train_ds = BinarizedMNIST("train", sources=['features'], flatten=['features'])
         # valid_ds = BinarizedMNIST("valid", sources=['features'])
         test_ds = BinarizedMNIST("test", sources=['features'], flatten=['features'])
-    elif datasource == 'sketch':
-        train_ds = BinarizedSketch("train", sources=['features'])
-        test_ds = BinarizedSketch("test", sources=['features'])
     else:
         datasource_fname = 'data/%s.hdf5'%datasource
         train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
@@ -280,7 +273,7 @@ def main(name, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            MyCheckpoint(name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            MyCheckpoint(image_size=image_size, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
             # Plot(name, channels=plot_channels),
             ProgressBar(),

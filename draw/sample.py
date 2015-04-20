@@ -8,6 +8,7 @@ import theano.tensor as T
 import cPickle as pickle
 
 import numpy as np
+import os
 
 
 from PIL import Image
@@ -59,27 +60,14 @@ def img_grid(arr, global_scale=True):
     I = (255*I).astype(np.uint8)
     return Image.fromarray(I)
 
-
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser.add_argument("model_file", help="filename of a pickled DRAW model")
-    parser.add_argument("--size", type=int,
-                default=28, help="Output image size (width and height)")
-    args = parser.parse_args()
-
-    logging.info("Loading file %s..." % args.model_file)
-    with open(args.model_file, "rb") as f:
-        p = pickle.load(f)
-
+def generate_samples(p, output_size):
     if isinstance(p, MainLoop):
         model = p.model
     elif isinstance(p, AbstractModel):
         model = p
-    else: 
+    else:
         print("Don't know how to handle unpickled %s" % type(p))
-        exit(1)
+        return
 
     draw = model.get_top_bricks()[0]
     # reset the random generator
@@ -97,19 +85,36 @@ if __name__ == "__main__":
 
     #------------------------------------------------------------
     logging.info("Sampling and saving images...")
-    
+
     samples = do_sample(16*16)
     #samples = np.random.normal(size=(16, 100, 28*28))
 
     n_iter, N, D = samples.shape
 
-    samples = samples.reshape( (n_iter, N, args.size, args.size) )
-    
+    samples = samples.reshape( (n_iter, N, output_size, output_size) )
+
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
         img.save("samples-%03d.png" % i)
-        
+
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
+    os.system("convert -delay 5 -loop 0 samples-*.png animaion.gif")
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--size", type=int,
+                default=28, help="Output image size (width and height)")
+    args = parser.parse_args()
+
+    logging.info("Loading file %s..." % args.model_file)
+    with open(args.model_file, "rb") as f:
+        p = pickle.load(f)
+
+    generate_samples(p, args.size)
+
 
 
