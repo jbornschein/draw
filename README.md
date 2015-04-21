@@ -26,7 +26,7 @@ You need to set the location of your data directory:
 
     echo "data_path: /home/user/data" >> ~/.fuelrc
 
-You need to download binarized MNIST data:
+You need to download binarized MNIST data: Please update the Fuel in latest version. and use ```fuel-download binarized_mnist``` and ```fuel-convert binarized_mnist``` command to download the mnist hdf5 dataset.
 
     export PYLEARN2_DATA_PATH=/home/user/data
     wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
@@ -41,7 +41,7 @@ Before training you need to start the bokeh-server
     bokeh-server
 or
 
-    boke-server --ip 0.0.0.0
+    bokeh-server --ip 0.0.0.0
 
 To train a model with a 2x2 read and a 5x5 write attention window run
 
