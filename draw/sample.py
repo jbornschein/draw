@@ -99,7 +99,7 @@ def generate_samples(p, output_size):
 
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
-    os.system("convert -delay 5 -loop 0 samples-*.png animaion.gif")
+    os.system("convert -delay 5 -loop 1 samples-*.png animation.gif")
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
