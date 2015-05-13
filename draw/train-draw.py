@@ -21,6 +21,7 @@ from theano import tensor
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.binarized_mnist import BinarizedMNIST
+from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -202,17 +203,17 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------
 
     if datasource == 'mnist':
-        mnist_train = BinarizedMNIST("train", sources=['features'], flatten=['features'])
+        mnist_train = BinarizedMNIST("train", sources=['features'])
         # mnist_valid = BinarizedMNIST("valid", sources=['features'])
-        mnist_test = BinarizedMNIST("test", sources=['features'], flatten=['features'])
-        train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
+        mnist_test = BinarizedMNIST("test", sources=['features'])
+        train_stream = Flatten(DataStream.default_stream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size)))
         # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-        test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
+        test_stream  = Flatten(DataStream.default_stream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size)))
     elif datasource == 'sketch':
         sketch_train = BinarizedSketch("train", sources=['features'])
         sketch_test = BinarizedSketch("test", sources=['features'])
-        train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
-        test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
+        train_stream = DataStream.default_stream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
+        test_stream  = DataStream.default_stream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
     else:
         raise Exception('Unknown name %s'%datasource)
 
