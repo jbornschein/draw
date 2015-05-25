@@ -23,6 +23,7 @@ from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
 from fuel.datasets.binarized_mnist import BinarizedMNIST
 from fuel.datasets import H5PYDataset
+from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -240,14 +241,17 @@ def main(name, epochs, batch_size, learning_rate,
     #------------------------------------------------------------
 
     if datasource == 'mnist':
-        train_ds = BinarizedMNIST("train", sources=['features'], flatten=['features'])
-        test_ds = BinarizedMNIST("test", sources=['features'], flatten=['features'])
+        train_ds = BinarizedMNIST("train", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'])
+    elif datasource == 'sketch':
+        train_ds = BinarizedSketch("train", sources=['features'])
+        test_ds = BinarizedSketch("test", sources=['features'])
     else:
         datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
-        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'], flatten=['features'])
-        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'], flatten=['features'])
-    train_stream = DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size))
-    test_stream  = DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size))
+        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'])
+        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'])
+    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
 
 
     main_loop = MainLoop(

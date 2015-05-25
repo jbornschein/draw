@@ -31,13 +31,15 @@ You need to set the location of your data directory:
 
     echo "data_path: /home/user/data" >> ~/.fuelrc
 
-You need to download binarized MNIST data: Please update the Fuel in latest version. and use ```fuel-download binarized_mnist``` and ```fuel-convert binarized_mnist``` command to download the mnist hdf5 dataset.
+You need to download binarized MNIST data. To do that using the latest version of Fuel:
 
     export PYLEARN2_DATA_PATH=/home/user/data
-    wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
-    python download_binarized_mnist.py
+    fuel-download binarized_mnist
+    fuel-convert binarized_mnist
+    mv binarized_mnist* $PYLEARN2_DATA_PATH/.
     
 The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
+
 
 Training with attention
 -----------------------
@@ -50,7 +52,8 @@ or
 
 To train a model with a 2x2 read and a 5x5 write attention window run
 
-    ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
+    cd draw
+    ./train-draw.py --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
 
 On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. Once training starts you can track its
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
