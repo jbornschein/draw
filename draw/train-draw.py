@@ -21,7 +21,6 @@ from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets.binarized_mnist import BinarizedMNIST
 from fuel.datasets import H5PYDataset
 from fuel.transformers import Flatten
 
@@ -37,7 +36,7 @@ from blocks.extensions.saveload import Checkpoint, Dump
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks import Tanh, Identity
+from blocks.bricks import Identity
 from blocks.bricks.cost import BinaryCrossEntropy
 from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 import cPickle as pickle
@@ -86,19 +85,56 @@ class MyCheckpoint(Checkpoint):
             raise
 
 #----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, 
+def main(name, dataset, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
-    datasource = name
-    if datasource == 'mnist':
+    datasource = dataset
+    if datasource == 'bmnist':
         if image_size is not None:
             raise Exception('image size for data source %s is pre configured'%datasource)
         image_size = 28
+    if datasource == 'sketch':
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%datasource)
+        image_size = 56
+    elif dataset == "cifar10":
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%datasource)
+        image_size = 32
     else:
         if image_size is None:
             raise Exception('Undefined image size for data source %s'%datasource)
+
+    print("Datasource is " + datasource)
+
+    if datasource == 'bmnist':
+        from fuel.datasets.binarized_mnist import BinarizedMNIST
+        channels, img_width, img_width = 1, 28, 28
+        train_ds = BinarizedMNIST("train", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'])
+    elif datasource == 'cifar10':
+        from fuel.datasets.cifar10 import CIFAR10
+        channels, img_width, img_width = 3, 32, 32
+        train_ds = CIFAR10("train", sources=['features'])
+        test_ds = CIFAR10("test", sources=['features'])
+    elif datasource == 'sketch':
+        import sys
+        sys.path.append("../datasets")
+        from binarized_sketch import BinarizedSketch
+        channels, img_width, img_width = 1, 28, 28
+        train_ds = BinarizedSketch("train", sources=['features'])
+        test_ds = BinarizedSketch("test", sources=['features'])
+    else:
+        datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
+        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'])
+        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'])
+    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
+
+
     x_dim = image_size * image_size
     img_height = img_width = image_size
+
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
@@ -109,19 +145,23 @@ def main(name, epochs, batch_size, learning_rate,
         'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
-    
+
+
+    x_dim = channels*img_width*img_height  # a single flattened datapoint
+
+    # Configure attention mechanism
     if attention != "":
         read_N, write_N = attention.split(',')
     
         read_N = int(read_N)
         write_N = int(write_N)
-        read_dim = 2*read_N**2
+        read_dim = 2*channels*read_N**2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=read_N, **inits)
         writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=write_N, **inits)
         attention_tag = "r%d-w%d" % (read_N, write_N)
     else:
@@ -131,8 +171,12 @@ def main(name, epochs, batch_size, learning_rate,
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
 
         attention_tag = "full"
+        # attention_tag = "noatt"
 
     #----------------------------------------------------------------------
+
+    if name is None:
+        name = dataset
 
     # Learning rate
     def lr_tag(value):
@@ -180,15 +224,9 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
+    x = x / 255.
     
-    #x_recons = 1. + x
     x_recons, kl_terms = draw.reconstruct(x)
-    #x_recons, _, _, _, _ = draw.silly(x, n_steps=10, batch_size=100)
-    #x_recons = x_recons[-1,:,:]
-
-    #samples = draw.sample(100) 
-    #x_recons = samples[-1, :, :]
-    #x_recons = samples[-1, :, :]
 
     recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
@@ -210,8 +248,6 @@ def main(name, epochs, batch_size, learning_rate,
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
-    #algorithm.add_updates(scan_updates)
-
 
     #------------------------------------------------------------------------
     # Setup monitors
@@ -240,20 +276,6 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    if datasource == 'mnist':
-        train_ds = BinarizedMNIST("train", sources=['features'])
-        test_ds = BinarizedMNIST("test", sources=['features'])
-    elif datasource == 'sketch':
-        train_ds = BinarizedSketch("train", sources=['features'])
-        test_ds = BinarizedSketch("test", sources=['features'])
-    else:
-        datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
-        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'])
-        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'])
-    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
-
-
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=train_stream,
@@ -277,7 +299,7 @@ def main(name, epochs, batch_size, learning_rate,
                 prefix="test"),
             MyCheckpoint(image_size=image_size, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
-            # Plot(name, channels=plot_channels),
+            Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
     if oldmodel is not None:
@@ -293,7 +315,9 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist", help="Name for the image dataset")
+                default=None, help="Name for this experiment")
+    parser.add_argument("--dataset", "--data", type=str, dest="dataset",
+                default="bmnist", help="Dataset to use: [bmnist|cifar10]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",

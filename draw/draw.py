@@ -141,7 +141,7 @@ class Reader(Initializable):
         return T.concatenate([x, x_hat], axis=1)
 
 class AttentionReader(Initializable):
-    def __init__(self, x_dim, dec_dim, height, width, N, **kwargs):
+    def __init__(self, x_dim, dec_dim, channels, height, width, N, **kwargs):
         super(AttentionReader, self).__init__(name="reader", **kwargs)
 
         self.img_height = height
@@ -149,9 +149,9 @@ class AttentionReader(Initializable):
         self.N = N
         self.x_dim = x_dim
         self.dec_dim = dec_dim
-        self.output_dim = 2*N*N
+        self.output_dim = 2*channels*N*N
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N)
+        self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.readout = MLP(activations=[Identity()], dims=[dec_dim, 5], **kwargs)
 
         self.children = [self.readout]
@@ -200,18 +200,19 @@ class Writer(Initializable):
 
 
 class AttentionWriter(Initializable):
-    def __init__(self, input_dim, output_dim, width, height, N, **kwargs):
+    def __init__(self, input_dim, output_dim, channels, width, height, N, **kwargs):
         super(AttentionWriter, self).__init__(name="writer", **kwargs)
 
+        self.channels = channels
         self.img_width = width
         self.img_height = height
         self.N = N
         self.input_dim = input_dim
         self.output_dim = output_dim
 
-        assert output_dim == width*height
+        assert output_dim == channels*width*height
 
-        self.zoomer = ZoomableAttentionWindow(height, width, N)
+        self.zoomer = ZoomableAttentionWindow(channels, height, width, N)
         self.z_trafo = Linear(
                 name=self.name+'_ztrafo',
                 input_dim=input_dim, output_dim=5, 
@@ -220,7 +221,7 @@ class AttentionWriter(Initializable):
 
         self.w_trafo = Linear(
                 name=self.name+'_wtrafo',
-                input_dim=input_dim, output_dim=N*N, 
+                input_dim=input_dim, output_dim=channels*N*N, 
                 weights_init=self.weights_init, biases_init=self.biases_init,
                 use_bias=True)
 

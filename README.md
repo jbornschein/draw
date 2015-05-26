@@ -29,6 +29,7 @@ Data
 ----
 You need to set the location of your data directory:
 
+    # used at runtime to find data
     echo "data_path: /home/user/data" >> ~/.fuelrc
 
 You need to download binarized MNIST data. To do that using the latest version of Fuel:
@@ -37,6 +38,12 @@ You need to download binarized MNIST data. To do that using the latest version o
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
     mv binarized_mnist* $PYLEARN2_DATA_PATH/.
+
+Similarly for cifar10:
+
+    fuel-download cifar10
+    fuel-convert cifar10
+    mv cifar* $PYLEARN2_DATA_PATH/.
     
 The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
 
@@ -59,8 +66,8 @@ On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and 
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 2 days to train the model. After each epoch it will save the following files:
 
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model [issue: access denied]
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl) [issue: access denied]
 of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog)
  * [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) showing how the creation of the result.
 
