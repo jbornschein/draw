@@ -60,7 +60,7 @@ def img_grid(arr, global_scale=True):
     I = (255*I).astype(np.uint8)
     return Image.fromarray(I)
 
-def generate_samples(p, output_size):
+def generate_samples(p, output_size, channels):
     if isinstance(p, MainLoop):
         model = p.model
     elif isinstance(p, AbstractModel):
@@ -91,7 +91,7 @@ def generate_samples(p, output_size):
 
     n_iter, N, D = samples.shape
 
-    samples = samples.reshape( (n_iter, N, output_size, output_size) )
+    samples = samples.reshape( (n_iter, N*channels, output_size, output_size) )
 
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
@@ -106,6 +106,8 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--channels", type=int,
+                default=1, help="number of channels")
     parser.add_argument("--size", type=int,
                 default=28, help="Output image size (width and height)")
     args = parser.parse_args()
@@ -114,7 +116,7 @@ if __name__ == "__main__":
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-    generate_samples(p, args.size)
+    generate_samples(p, args.size, args.channels)
 
 
 

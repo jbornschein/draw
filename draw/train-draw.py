@@ -50,10 +50,10 @@ from blocks.serialization import secure_pickle_dump
 LOADED_FROM = "loaded_from"
 SAVED_TO = "saved_to"
 class MyCheckpoint(Checkpoint):
-    def __init__(self, image_size, **kwargs):
+    def __init__(self, image_size, channels, **kwargs):
         super(MyCheckpoint, self).__init__(**kwargs)
-
         self.image_size = image_size
+        self.channels = channels
 
     def do(self, callback_name, *args):
         """Pickle the main loop object to the disk.
@@ -79,7 +79,7 @@ class MyCheckpoint(Checkpoint):
                     secure_pickle_dump(p, filenames[attribute])
                 else:
                     print("Empty %s",attribute)
-            generate_samples(self.main_loop, self.image_size)
+            generate_samples(self.main_loop, self.image_size, self.channels)
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
             raise
@@ -297,7 +297,7 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            MyCheckpoint(image_size=image_size, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            MyCheckpoint(image_size=image_size, channels=channels, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
             Plot(name, channels=plot_channels),
             ProgressBar(),
