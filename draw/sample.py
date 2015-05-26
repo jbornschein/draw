@@ -14,7 +14,7 @@ import os
 from PIL import Image
 from blocks.main_loop import MainLoop
 from blocks.model import AbstractModel
-from blocks import config
+from blocks.config import config
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
