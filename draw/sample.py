@@ -60,10 +60,8 @@ def img_grid(arr, global_scale=True):
     I = (255*I).astype(np.uint8)
     return Image.fromarray(I)
 
-def generate_samples(p, output_size):
-    if isinstance(p, MainLoop):
-        model = p.model
-    elif isinstance(p, AbstractModel):
+def generate_samples(p, subdir, output_size):
+    if isinstance(p, AbstractModel):
         model = p
     else:
         print("Don't know how to handle unpickled %s" % type(p))
@@ -93,13 +91,17 @@ def generate_samples(p, output_size):
 
     samples = samples.reshape( (n_iter, N, output_size, output_size) )
 
+    if(n_iter > 0):
+        img = img_grid(samples[n_iter-1,:,:,:])
+        img.save("{0}/sample.png".format(subdir))
+
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
-        img.save("samples-%03d.png" % i)
+        img.save("{0}/samples-{1:03d}.png".format(subdir, i))
 
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
-    os.system("convert -delay 5 -loop 1 samples-*.png animation.gif")
+    os.system("convert -delay 5 -loop 1 {0}/samples-*.png {0}/samples.gif".format(subdir))
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -114,7 +116,7 @@ if __name__ == "__main__":
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-    generate_samples(p, args.size)
+    generate_samples(p, ".", args.size)
 
 
 

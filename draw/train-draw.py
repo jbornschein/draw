@@ -14,6 +14,8 @@ import theano
 import theano.tensor as T
 import fuel
 import ipdb
+import time
+import shutil
 
 from argparse import ArgumentParser
 from collections import OrderedDict
@@ -51,10 +53,12 @@ from blocks.serialization import secure_pickle_dump
 LOADED_FROM = "loaded_from"
 SAVED_TO = "saved_to"
 class MyCheckpoint(Checkpoint):
-    def __init__(self, image_size, **kwargs):
+    def __init__(self, image_size, save_subdir, **kwargs):
         super(MyCheckpoint, self).__init__(**kwargs)
-
         self.image_size = image_size
+        self.save_subdir = save_subdir
+        self.iteration = 0
+        self.epoch_src = "{0}/sample.png".format(save_subdir)
 
     def do(self, callback_name, *args):
         """Pickle the main loop object to the disk.
@@ -80,23 +84,39 @@ class MyCheckpoint(Checkpoint):
                     secure_pickle_dump(p, filenames[attribute])
                 else:
                     print("Empty %s",attribute)
-            generate_samples(self.main_loop, self.image_size)
+            generate_samples(self.main_loop.model, self.save_subdir, self.image_size)
+            if os.path.exists(self.epoch_src):
+                epoch_dst = "{0}/epochs-{1:03d}.png".format(self.save_subdir, self.iteration)
+                self.iteration = self.iteration + 1
+                shutil.copy2(self.epoch_src, epoch_dst)
+                os.system("convert -delay 5 -loop 1 {0}/epochs-*.png {0}/training.gif".format(self.save_subdir))
+
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
             raise
 
 #----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, 
+def main(name, dataset, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
-    datasource = name
+    datasource = dataset
     if datasource == 'mnist':
         if image_size is not None:
             raise Exception('image size for data source %s is pre configured'%datasource)
         image_size = 28
+    elif datasource == 'sketch':
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%datasource)
+        image_size = 56
     else:
         if image_size is None:
             raise Exception('Undefined image size for data source %s'%datasource)
+
+    print("Datasource is " + datasource)
+
+    if name is None:
+        name = dataset
+
     x_dim = image_size * image_size
     img_height = img_width = image_size
     rnninits = {
@@ -147,9 +167,16 @@ def main(name, epochs, batch_size, learning_rate,
         return "%s%d" % (leading, -exp)
 
     lr_str = lr_tag(learning_rate)
-    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
-    print("\nRunning experiment %s" % name)
+    subdir = time.strftime("%Y%m%d-%H%M%S") + "-" + name;
+    longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
+    pickle_file = subdir + "/" + longname + ".pkl"
+
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
+
+    print("\nRunning experiment %s" % longname)
+    print("               dataset: %s" % dataset)
     print("         learning rate: %g" % learning_rate)
     print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
@@ -275,7 +302,7 @@ def main(name, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            MyCheckpoint(image_size=image_size, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            MyCheckpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
             # Plot(name, channels=plot_channels),
             ProgressBar(),
@@ -293,7 +320,9 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist", help="Name for the image dataset")
+                default=None, help="Name for this experiment")
+    parser.add_argument("--dataset", type=str, dest="dataset",
+                default="mnist", help="Dataset to use: [mnist|sketch]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
