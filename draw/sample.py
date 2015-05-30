@@ -97,11 +97,11 @@ def generate_samples(p, subdir, output_size):
 
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
-        img.save("{0}/samples-{1:03d}.png".format(subdir, i))
+        img.save("{0}/sample-{1:03d}.png".format(subdir, i))
 
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
-    os.system("convert -delay 5 -loop 1 {0}/samples-*.png {0}/samples.gif".format(subdir))
+    os.system("convert -delay 5 -loop 1 {0}/sample-*.png {0}/samples.gif".format(subdir))
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
@@ -116,7 +116,11 @@ if __name__ == "__main__":
     with open(args.model_file, "rb") as f:
         p = pickle.load(f)
 
-    generate_samples(p, ".", args.size)
+    subdir = "sample"
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
+
+    generate_samples(p, subdir, args.size)
 
 
 
