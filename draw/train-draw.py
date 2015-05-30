@@ -86,10 +86,10 @@ class MyCheckpoint(Checkpoint):
                     print("Empty %s",attribute)
             generate_samples(self.main_loop.model, self.save_subdir, self.image_size)
             if os.path.exists(self.epoch_src):
-                epoch_dst = "{0}/epochs-{1:03d}.png".format(self.save_subdir, self.iteration)
+                epoch_dst = "{0}/epoch-{1:03d}.png".format(self.save_subdir, self.iteration)
                 self.iteration = self.iteration + 1
                 shutil.copy2(self.epoch_src, epoch_dst)
-                os.system("convert -delay 5 -loop 1 {0}/epochs-*.png {0}/training.gif".format(self.save_subdir))
+                os.system("convert -delay 5 -loop 1 {0}/epoch-*.png {0}/training.gif".format(self.save_subdir))
 
         except Exception:
             self.main_loop.log.current_row[SAVED_TO] = None
@@ -99,20 +99,32 @@ class MyCheckpoint(Checkpoint):
 def main(name, dataset, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
-    datasource = dataset
-    if datasource == 'mnist':
+    if dataset == 'mnist':
         if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
+            raise Exception('image size for data source %s is pre configured'%dataset)
         image_size = 28
-    elif datasource == 'sketch':
+        train_ds = BinarizedMNIST("train", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'])
+    elif dataset == 'sketch':
         if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
+            raise Exception('image size for data source %s is pre configured'%dataset)
         image_size = 56
+        import sys
+        sys.path.append("../datasets")
+        from binarized_sketch import BinarizedSketch
+        train_ds = BinarizedSketch("train", sources=['features'])
+        test_ds = BinarizedSketch("test", sources=['features'])
     else:
         if image_size is None:
-            raise Exception('Undefined image size for data source %s'%datasource)
+            raise Exception('Undefined image size for data source %s'%dataset)
+        dataset_fname = os.path.join(fuel.config.data_path, dataset+'.hdf5')
+        train_ds = H5PYDataset(dataset_fname, which_set='train', sources=['features'])
+        test_ds = H5PYDataset(dataset_fname, which_set='test', sources=['features'])
+    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
 
-    print("Datasource is " + datasource)
+
+    print("dataset is " + dataset)
 
     if name is None:
         name = dataset
@@ -172,11 +184,9 @@ def main(name, dataset, epochs, batch_size, learning_rate,
     longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
     pickle_file = subdir + "/" + longname + ".pkl"
 
-    if not os.path.exists(subdir):
-        os.makedirs(subdir)
-
     print("\nRunning experiment %s" % longname)
     print("               dataset: %s" % dataset)
+    print("          subdirectory: %s" % subdir)
     print("         learning rate: %g" % learning_rate)
     print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
@@ -184,6 +194,7 @@ def main(name, dataset, epochs, batch_size, learning_rate,
     print("           z dimension: %d" % z_dim)
     print("     decoder dimension: %d" % dec_dim)
     print("            batch size: %d" % batch_size)
+    print("                epochs: %d" % epochs)
     print()
 
     #----------------------------------------------------------------------
@@ -267,19 +278,8 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    if datasource == 'mnist':
-        train_ds = BinarizedMNIST("train", sources=['features'])
-        test_ds = BinarizedMNIST("test", sources=['features'])
-    elif datasource == 'sketch':
-        train_ds = BinarizedSketch("train", sources=['features'])
-        test_ds = BinarizedSketch("test", sources=['features'])
-    else:
-        datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
-        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'])
-        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'])
-    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
-
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
 
     main_loop = MainLoop(
         model=Model(cost),
