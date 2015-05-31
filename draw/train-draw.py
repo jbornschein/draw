@@ -112,18 +112,13 @@ def main(name, dataset, epochs, batch_size, learning_rate,
         from fuel.datasets import MNIST
         train_ds = MNIST("train", sources=['features'])
         test_ds = MNIST("test", sources=['features'])
-    elif dataset == 'sketch':
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%dataset)
-        image_size = 56
-        import sys
-        sys.path.append("../datasets")
-        from binarized_sketch import BinarizedSketch
-        train_ds = BinarizedSketch("train", sources=['features'])
-        test_ds = BinarizedSketch("test", sources=['features'])
     else:
         if image_size is None:
-            raise Exception('Undefined image size for data source %s'%dataset)
+            # allow size to be optional on known datasets
+            if dataset == 'sketch':
+                image_size = 56
+            else:
+                raise Exception('Undefined image size for data source %s'%dataset)
         dataset_fname = os.path.join(fuel.config.data_path, dataset+'.hdf5')
         train_ds = H5PYDataset(dataset_fname, which_set='train', sources=['features'])
         test_ds = H5PYDataset(dataset_fname, which_set='test', sources=['features'])
