@@ -23,7 +23,6 @@ from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets.binarized_mnist import BinarizedMNIST
 from fuel.datasets import H5PYDataset
 from fuel.transformers import Flatten
 
@@ -99,12 +98,20 @@ class MyCheckpoint(Checkpoint):
 def main(name, dataset, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
-    if dataset == 'mnist':
+    if dataset == 'bmnist':
         if image_size is not None:
             raise Exception('image size for data source %s is pre configured'%dataset)
         image_size = 28
+        from fuel.datasets.binarized_mnist import BinarizedMNIST
         train_ds = BinarizedMNIST("train", sources=['features'])
         test_ds = BinarizedMNIST("test", sources=['features'])
+    elif dataset == 'mnist':
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%dataset)
+        image_size = 28
+        from fuel.datasets import MNIST
+        train_ds = MNIST("train", sources=['features'])
+        test_ds = MNIST("test", sources=['features'])
     elif dataset == 'sketch':
         if image_size is not None:
             raise Exception('image size for data source %s is pre configured'%dataset)
@@ -322,7 +329,7 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
     parser.add_argument("--dataset", type=str, dest="dataset",
-                default="mnist", help="Dataset to use: [mnist|sketch]")
+                default="bmnist", help="Dataset to use: [bmnist|mnist|sketch]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
