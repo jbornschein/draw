@@ -34,7 +34,7 @@ def test_batched_dot():
 
     # check content 
     C_ = np.zeros((dim1, dim2, dim4))
-    for i in xrange(dim1):
+    for i in range(dim1):
         C_[i] = np.dot(A[i], B[i])
     assert np.allclose(C, C_)
     
