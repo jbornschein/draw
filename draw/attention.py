@@ -18,7 +18,7 @@ def my_batched_dot(A, B):
     is \approx equal to:       
                
     for i in range(dim_1):     
-        C[i] = tensor.dot(A, B)        
+        C[i] = tensor.dot(A[i], B[i])
        
     Returns        
     -------        
@@ -191,9 +191,7 @@ class ZoomableAttentionWindow(object):
     
         return center_y, center_x, delta, sigma, gamma
 
-
 #=============================================================================
-
 
 if __name__ == "__main__":
     from PIL import Image

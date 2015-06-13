@@ -1,4 +1,7 @@
 
+[![Build Status](https://api.shippable.com/projects/557c82e6edd7f2c05214d9ce/badge?branchName=master)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
+
+
 Reimplementation of the DRAW network architecture
 =================================================
 
