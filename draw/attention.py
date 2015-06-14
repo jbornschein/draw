@@ -57,7 +57,8 @@ class ZoomableAttentionWindow(object):
         
         Returns
         -------
-            FY, FX 
+            FY : T.fvector (shape: )
+            FX : T.fvector (shape: )
         """
         tol = 1e-4
         N = self.N
