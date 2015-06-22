@@ -1,5 +1,6 @@
 
 [![Build Status](https://api.shippable.com/projects/557c82e6edd7f2c05214d9ce/badge?branchName=master)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
+[![Affero GPUv3](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/agpl-3.0/)
 
 
 Reimplementation of the DRAW network architecture
