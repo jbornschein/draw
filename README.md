@@ -3,15 +3,13 @@
 [![Affero GPUv3](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/agpl-3.0/)
 
 
-Reimplementation of the DRAW network architecture
-=================================================
-
+Implementation of the DRAW network architecture
+-----------------------------------------------
 This repository contains a reimplementation of the Deep Recurrent Attentive
 Writer (DRAW) network architecture introduced by K. Gregor, I. Danihelka,
 A. Graves and D. Wierstra. The original paper can be found at
 
   http://arxiv.org/pdf/1502.04623
-
 
 Dependencies
 ------------
@@ -86,15 +84,20 @@ to create a visualization of the KL divergence potted over inference iterations 
 
 Testing
 -------
-
 Run 
 
+    nosetest2 -v draw/ 
+
+to execute the testsuite. Run 
+
+    cd draw
     ./attention.py
 
-to test the attention windowing code. It will open three windows: A window 
-displaying the original input image, a window displaying some extracted,
-downsampled content (testing the read-operation), and a window showing the
-upsampled content (matching the input size) after the write operation.
+to test the attention windowing code on some image. It will open three windows:
+A window displaying the original input image, a window displaying some
+extracted, downsampled content (testing the read-operation), and a window
+showing the upsampled content (matching the input size) after the write
+operation.
 
 Note
 ----
