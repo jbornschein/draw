@@ -8,10 +8,10 @@ import theano
 
 from theano import tensor
 
-from blocks.bricks.base import application, _Brick, Brick, lazy
+from blocks.bricks.base import application, lazy
 from blocks.roles import add_role, WEIGHT, BIAS
-from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
-from blocks.utils import pack, shared_floatx_zeros
+from blocks.bricks import Random, Initializable, Linear
+from blocks.utils import shared_floatx_zeros
 
 logger = logging.getLogger(__name__)
 floatX = theano.config.floatX

@@ -15,10 +15,11 @@ import theano.tensor as T
 import fuel
 import ipdb
 import time
-import shutil
+import cPickle as pickle
+
+import blocks.extras
 
 from argparse import ArgumentParser
-from collections import OrderedDict
 from theano import tensor
 
 from fuel.streams import DataStream
@@ -41,8 +42,8 @@ from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
 
-from draw import *
-import datasets
+from datasets
+from draw.draw import *
 
 fuel.config.floatX = theano.config.floatX
 
@@ -51,7 +52,7 @@ fuel.config.floatX = theano.config.floatX
 
 
 def main(name, dataset, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
 
 
     image_size, data_train, data_valid, data_test = datasets.get_data(dataset)
@@ -237,17 +238,19 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            MyCheckpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            #Dump(name),
+            Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            #Checkpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
             # Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
+
     if oldmodel is not None:
         print("Initializing parameters with old model %s"%oldmodel)
         with open(oldmodel, "rb") as f:
             oldmodel = pickle.load(f)
             main_loop.model.set_param_values(oldmodel.get_param_values())
         del oldmodel
+
     main_loop.run()
 
 #-----------------------------------------------------------------------------
@@ -276,9 +279,6 @@ if __name__ == "__main__":
                 default=100, help="Z-vector dimension")
     parser.add_argument("--oldmodel", type=str,
                 help="Use a model pkl file created by a previous run as a starting point for all parameters")
-    parser.add_argument("--sz", "--image-size", type=int, dest="image_size",
-                help="width and height of each image in dataset")
     args = parser.parse_args()
 
     main(**vars(args))
-

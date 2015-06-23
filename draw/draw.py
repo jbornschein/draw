@@ -9,10 +9,10 @@ import theano.tensor as T
 
 from theano import tensor
 
-from blocks.bricks.base import application, _Brick, Brick, lazy
+from blocks.bricks.base import application, lazy
 from blocks.bricks.recurrent import BaseRecurrent, recurrent
-from blocks.bricks import Random, MLP, Linear, Tanh, Softmax, Sigmoid, Initializable
-from blocks.bricks import Tanh, Identity
+from blocks.bricks import Random, Initializable, MLP, Linear
+from blocks.bricks import Identity, Tanh, Logistic
 
 from attention import ZoomableAttentionWindow
 from prob_layers import replicate_batch
