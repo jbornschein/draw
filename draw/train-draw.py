@@ -23,116 +23,49 @@ from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets import H5PYDataset
 from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
+from blocks.bricks import Tanh, Identity
+from blocks.bricks.cost import BinaryCrossEntropy
+from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
-from blocks.extensions.plot import Plot
-from blocks.extensions.saveload import Checkpoint, Dump
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
+from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks import Tanh, Identity
-from blocks.bricks.cost import BinaryCrossEntropy
-from blocks.bricks.recurrent import SimpleRecurrent, LSTM
-import cPickle as pickle
 
 from draw import *
+import datasets
 
 fuel.config.floatX = theano.config.floatX
 
-from sample import generate_samples
-from blocks.serialization import secure_pickle_dump
-LOADED_FROM = "loaded_from"
-SAVED_TO = "saved_to"
-class MyCheckpoint(Checkpoint):
-    def __init__(self, image_size, save_subdir, **kwargs):
-        super(MyCheckpoint, self).__init__(**kwargs)
-        self.image_size = image_size
-        self.save_subdir = save_subdir
-        self.iteration = 0
-        self.epoch_src = "{0}/sample.png".format(save_subdir)
-
-    def do(self, callback_name, *args):
-        """Pickle the main loop object to the disk.
-
-        If `*args` contain an argument from user, it is treated as
-        saving path to be used instead of the one given at the
-        construction stage.
-
-        """
-        from_main_loop, from_user = self.parse_args(callback_name, args)
-        try:
-            path = self.path
-            if len(from_user):
-                path, = from_user
-#            already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
-#            self.main_loop.log.current_row[SAVED_TO] = (
-#                already_saved_to + (path,))
-#            secure_pickle_dump(self.main_loop, path)
-            filenames = self.save_separately_filenames(path)
-            for attribute in self.save_separately:
-                p = getattr(self.main_loop, attribute)
-                if p:
-                    secure_pickle_dump(p, filenames[attribute])
-                else:
-                    print("Empty %s",attribute)
-            generate_samples(self.main_loop.model, self.save_subdir, self.image_size)
-            if os.path.exists(self.epoch_src):
-                epoch_dst = "{0}/epoch-{1:03d}.png".format(self.save_subdir, self.iteration)
-                self.iteration = self.iteration + 1
-                shutil.copy2(self.epoch_src, epoch_dst)
-                os.system("convert -delay 5 -loop 1 {0}/epoch-*.png {0}/training.gif".format(self.save_subdir))
-
-        except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
-            raise
 
 #----------------------------------------------------------------------------
+
+
 def main(name, dataset, epochs, batch_size, learning_rate, 
          attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
 
-    if dataset == 'bmnist':
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%dataset)
-        image_size = 28
-        from fuel.datasets.binarized_mnist import BinarizedMNIST
-        train_ds = BinarizedMNIST("train", sources=['features'])
-        test_ds = BinarizedMNIST("test", sources=['features'])
-    elif dataset == 'mnist':
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%dataset)
-        image_size = 28
-        from fuel.datasets import MNIST
-        train_ds = MNIST("train", sources=['features'])
-        test_ds = MNIST("test", sources=['features'])
-    else:
-        if image_size is None:
-            # allow size to be optional on known datasets
-            if dataset == 'sketch':
-                image_size = 56
-            else:
-                raise Exception('Undefined image size for data source %s'%dataset)
-        dataset_fname = os.path.join(fuel.config.data_path, dataset+'.hdf5')
-        train_ds = H5PYDataset(dataset_fname, which_set='train', sources=['features'])
-        test_ds = H5PYDataset(dataset_fname, which_set='test', sources=['features'])
-    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
 
+    image_size, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-    print("dataset is " + dataset)
+    train_stream = Flatten(DataStream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
+    valid_stream = Flatten(DataStream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
 
     if name is None:
         name = dataset
 
-    x_dim = image_size * image_size
-    img_height = img_width = image_size
+    img_height, img_width = image_size
+    x_dim = img_height * img_width
+
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
