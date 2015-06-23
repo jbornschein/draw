@@ -3,7 +3,7 @@ import unittest
 
 from nose.plugins.skip import Skip, SkipTest
 
-import datasets
+import draw.datasets as datasets
 
 
 def test_shape():

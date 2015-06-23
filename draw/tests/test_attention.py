@@ -6,7 +6,7 @@ import numpy as np
 
 from theano import tensor as T
 
-from attention import *
+from draw.attention import *
 
 floatX = theano.config.floatX
 

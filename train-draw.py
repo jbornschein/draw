@@ -42,10 +42,8 @@ from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
 
-from datasets
+import draw.datasets as datasets
 from draw.draw import *
-
-fuel.config.floatX = theano.config.floatX
 
 
 #----------------------------------------------------------------------------
