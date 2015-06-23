@@ -33,15 +33,15 @@ Data
 ----
 You need to set the location of your data directory:
 
-    echo "data_path: /home/user/data" >> ~/.fuelrc
+    export FUEL_DATA_PATH=/home/user/data
 
-You need to download binarized MNIST data. To do that using the latest version of Fuel:
+and download the binarized MNIST data. To do that using the latest version of Fuel:
 
+    cd $FUEL_DATA_PATH
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
-    mv binarized_mnist* /home/user/data
     
-The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
+The [datasets/README.md](./draw/datasets/README.md) file has instructions for additional data-sets.
 
 
 Training with attention
