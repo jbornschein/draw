@@ -21,8 +21,13 @@ This will install all the other dependencies for you (Theano, Fuel, etc.).
  * [Theano](https://github.com/theano/Theano)
  * [Fuel](https://github.com/bartvm/fuel)
  * [picklable_itertools](https://github.com/dwf/picklable_itertools)
+
+You also need to install
+
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
  * [ipdb](https://pypi.python.org/pypi/ipdb)
+ * [ImageMagick](http://www.imagemagick.org/)
+
 
 Data
 ----
@@ -30,13 +35,15 @@ You need to set the location of your data directory:
 
     echo "data_path: /home/user/data" >> ~/.fuelrc
 
-You need to download binarized MNIST data:
+You need to download binarized MNIST data. To do that using the latest version of Fuel:
 
     export PYLEARN2_DATA_PATH=/home/user/data
-    wget https://github.com/lisa-lab/pylearn2/blob/master/pylearn2/scripts/datasets/download_binarized_mnist.py
-    python download_binarized_mnist.py
+    fuel-download binarized_mnist
+    fuel-convert binarized_mnist
+    mv binarized_mnist* $PYLEARN2_DATA_PATH/.
     
 The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
+
 
 Training with attention
 -----------------------
@@ -45,28 +52,27 @@ Before training you need to start the bokeh-server
     bokeh-server
 or
 
-    boke-server --ip 0.0.0.0
+    bokeh-server --ip 0.0.0.0
 
 To train a model with a 2x2 read and a 5x5 write attention window run
 
-    ./train-draw --attention=2,5 --niter=64 --lr=3e-4 --epochs=100 
+    cd draw
+    ./train-draw.py --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
 
 On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. Once training starts you can track its
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
-It will take about 2 days to train the model. After each epoch it will save 3 `pkl` files:
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34.pkl)
-of the [enitre main loop](http://blocks.readthedocs.org/en/latest/api/main_loop.html#blocks.main_loop.MainLoop),
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model,
-and 
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
-of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog).
+It will take about 2 days to train the model. After each epoch it will save the following files:
 
-With
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
+of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog)
+ * [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) showing how the creation of the result.
+
+The [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) can also be created manually with
 
     python sample.py [pickle-of-model]
-    # this requires ImageMagick to be installed
     convert -delay 5 -loop 0 samples-*.png animaion.gif
-you can create samples similar to 
+creating samples similar to 
 
  ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
 

@@ -8,12 +8,13 @@ import theano.tensor as T
 import cPickle as pickle
 
 import numpy as np
+import os
 
 
 from PIL import Image
 from blocks.main_loop import MainLoop
 from blocks.model import AbstractModel
-from blocks import config
+from blocks.config import config
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -22,7 +23,7 @@ logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 def scale_norm(arr):
     arr = arr - arr.min()
     scale = (arr.max() - arr.min())
-    return arr / sample
+    return arr / scale
 
 def img_grid(arr, global_scale=True):
     N, height, width = arr.shape
@@ -59,27 +60,12 @@ def img_grid(arr, global_scale=True):
     I = (255*I).astype(np.uint8)
     return Image.fromarray(I)
 
-
-if __name__ == "__main__":
-    from argparse import ArgumentParser
-
-    parser = ArgumentParser()
-    parser.add_argument("model_file", help="filename of a pickled DRAW model")
-    parser.add_argument("--size", type=int,
-                default=28, help="Output image size (width and height)")
-    args = parser.parse_args()
-
-    logging.info("Loading file %s..." % args.model_file)
-    with open(args.model_file, "rb") as f:
-        p = pickle.load(f)
-
-    if isinstance(p, MainLoop):
-        model = p.model
-    elif isinstance(p, AbstractModel):
+def generate_samples(p, subdir, output_size):
+    if isinstance(p, AbstractModel):
         model = p
-    else: 
+    else:
         print("Don't know how to handle unpickled %s" % type(p))
-        exit(1)
+        return
 
     draw = model.get_top_bricks()[0]
     # reset the random generator
@@ -97,19 +83,44 @@ if __name__ == "__main__":
 
     #------------------------------------------------------------
     logging.info("Sampling and saving images...")
-    
+
     samples = do_sample(16*16)
     #samples = np.random.normal(size=(16, 100, 28*28))
 
     n_iter, N, D = samples.shape
 
-    samples = samples.reshape( (n_iter, N, args.size, args.size) )
-    
+    samples = samples.reshape( (n_iter, N, output_size, output_size) )
+
+    if(n_iter > 0):
+        img = img_grid(samples[n_iter-1,:,:,:])
+        img.save("{0}/sample.png".format(subdir))
+
     for i in xrange(n_iter):
         img = img_grid(samples[i,:,:,:])
-        img.save("samples-%03d.png" % i)
-        
+        img.save("{0}/sample-{1:03d}.png".format(subdir, i))
+
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
+    os.system("convert -delay 5 -loop 1 {0}/sample-*.png {0}/samples.gif".format(subdir))
+
+if __name__ == "__main__":
+    from argparse import ArgumentParser
+
+    parser = ArgumentParser()
+    parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--size", type=int,
+                default=28, help="Output image size (width and height)")
+    args = parser.parse_args()
+
+    logging.info("Loading file %s..." % args.model_file)
+    with open(args.model_file, "rb") as f:
+        p = pickle.load(f)
+
+    subdir = "sample"
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
+
+    generate_samples(p, subdir, args.size)
+
 
 

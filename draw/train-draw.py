@@ -9,10 +9,13 @@ FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
 logging.basicConfig(format=FORMAT, datefmt=DATEFMT, level=logging.INFO)
 
+import os
 import theano
 import theano.tensor as T
 import fuel
 import ipdb
+import time
+import shutil
 
 from argparse import ArgumentParser
 from collections import OrderedDict
@@ -20,7 +23,8 @@ from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets.binarized_mnist import BinarizedMNIST
+from fuel.datasets import H5PYDataset
+from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
@@ -41,26 +45,94 @@ import cPickle as pickle
 
 from draw import *
 
-import sys
-sys.path.append("../datasets")
-from binarized_sketch import BinarizedSketch
-
 fuel.config.floatX = theano.config.floatX
 
-#----------------------------------------------------------------------------
-def main(name, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
+from sample import generate_samples
+from blocks.serialization import secure_pickle_dump
+LOADED_FROM = "loaded_from"
+SAVED_TO = "saved_to"
+class MyCheckpoint(Checkpoint):
+    def __init__(self, image_size, save_subdir, **kwargs):
+        super(MyCheckpoint, self).__init__(**kwargs)
+        self.image_size = image_size
+        self.save_subdir = save_subdir
+        self.iteration = 0
+        self.epoch_src = "{0}/sample.png".format(save_subdir)
 
-    datasource = name
-    if datasource == 'mnist':
-        x_dim = 28*28
-        img_height, img_width = (28, 28)
-    elif datasource == 'sketch':
-        x_dim = 56*56
-        img_height, img_width = (56, 56)
+    def do(self, callback_name, *args):
+        """Pickle the main loop object to the disk.
+
+        If `*args` contain an argument from user, it is treated as
+        saving path to be used instead of the one given at the
+        construction stage.
+
+        """
+        from_main_loop, from_user = self.parse_args(callback_name, args)
+        try:
+            path = self.path
+            if len(from_user):
+                path, = from_user
+#            already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
+#            self.main_loop.log.current_row[SAVED_TO] = (
+#                already_saved_to + (path,))
+#            secure_pickle_dump(self.main_loop, path)
+            filenames = self.save_separately_filenames(path)
+            for attribute in self.save_separately:
+                p = getattr(self.main_loop, attribute)
+                if p:
+                    secure_pickle_dump(p, filenames[attribute])
+                else:
+                    print("Empty %s",attribute)
+            generate_samples(self.main_loop.model, self.save_subdir, self.image_size)
+            if os.path.exists(self.epoch_src):
+                epoch_dst = "{0}/epoch-{1:03d}.png".format(self.save_subdir, self.iteration)
+                self.iteration = self.iteration + 1
+                shutil.copy2(self.epoch_src, epoch_dst)
+                os.system("convert -delay 5 -loop 1 {0}/epoch-*.png {0}/training.gif".format(self.save_subdir))
+
+        except Exception:
+            self.main_loop.log.current_row[SAVED_TO] = None
+            raise
+
+#----------------------------------------------------------------------------
+def main(name, dataset, epochs, batch_size, learning_rate, 
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
+
+    if dataset == 'bmnist':
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%dataset)
+        image_size = 28
+        from fuel.datasets.binarized_mnist import BinarizedMNIST
+        train_ds = BinarizedMNIST("train", sources=['features'])
+        test_ds = BinarizedMNIST("test", sources=['features'])
+    elif dataset == 'mnist':
+        if image_size is not None:
+            raise Exception('image size for data source %s is pre configured'%dataset)
+        image_size = 28
+        from fuel.datasets import MNIST
+        train_ds = MNIST("train", sources=['features'])
+        test_ds = MNIST("test", sources=['features'])
     else:
-        raise Exception('Unknown name %s'%datasource)
-    
+        if image_size is None:
+            # allow size to be optional on known datasets
+            if dataset == 'sketch':
+                image_size = 56
+            else:
+                raise Exception('Undefined image size for data source %s'%dataset)
+        dataset_fname = os.path.join(fuel.config.data_path, dataset+'.hdf5')
+        train_ds = H5PYDataset(dataset_fname, which_set='train', sources=['features'])
+        test_ds = H5PYDataset(dataset_fname, which_set='test', sources=['features'])
+    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
+
+
+    print("dataset is " + dataset)
+
+    if name is None:
+        name = dataset
+
+    x_dim = image_size * image_size
+    img_height = img_width = image_size
     rnninits = {
         #'weights_init': Orthogonal(),
         'weights_init': IsotropicGaussian(0.01),
@@ -109,15 +181,22 @@ def main(name, epochs, batch_size, learning_rate,
         return "%s%d" % (leading, -exp)
 
     lr_str = lr_tag(learning_rate)
-    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
-    print("\nRunning experiment %s" % name)
-    print("         learning rate: %5.3f" % learning_rate) 
+    subdir = time.strftime("%Y%m%d-%H%M%S") + "-" + name;
+    longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
+    pickle_file = subdir + "/" + longname + ".pkl"
+
+    print("\nRunning experiment %s" % longname)
+    print("               dataset: %s" % dataset)
+    print("          subdirectory: %s" % subdir)
+    print("         learning rate: %g" % learning_rate)
     print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
     print("     encoder dimension: %d" % enc_dim)
     print("           z dimension: %d" % z_dim)
     print("     decoder dimension: %d" % dec_dim)
+    print("            batch size: %d" % batch_size)
+    print("                epochs: %d" % epochs)
     print()
 
     #----------------------------------------------------------------------
@@ -201,21 +280,8 @@ def main(name, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
-    if datasource == 'mnist':
-        mnist_train = BinarizedMNIST("train", sources=['features'], flatten=['features'])
-        # mnist_valid = BinarizedMNIST("valid", sources=['features'])
-        mnist_test = BinarizedMNIST("test", sources=['features'], flatten=['features'])
-        train_stream = DataStream(mnist_train, iteration_scheme=SequentialScheme(mnist_train.num_examples, batch_size))
-        # valid_stream = DataStream(mnist_valid, iteration_scheme=SequentialScheme(mnist_valid.num_examples, batch_size))
-        test_stream  = DataStream(mnist_test,  iteration_scheme=SequentialScheme(mnist_test.num_examples, batch_size))
-    elif datasource == 'sketch':
-        sketch_train = BinarizedSketch("train", sources=['features'])
-        sketch_test = BinarizedSketch("test", sources=['features'])
-        train_stream = DataStream(sketch_train, iteration_scheme=SequentialScheme(sketch_train.num_examples, batch_size))
-        test_stream  = DataStream(sketch_test,  iteration_scheme=SequentialScheme(sketch_test.num_examples, batch_size))
-    else:
-        raise Exception('Unknown name %s'%datasource)
-
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
 
     main_loop = MainLoop(
         model=Model(cost),
@@ -231,16 +297,16 @@ def main(name, epochs, batch_size, learning_rate,
 #            DataStreamMonitoring(
 #                monitors,
 #                valid_stream,
-##                updates=scan_updates, 
+##                updates=scan_updates,
 #                prefix="valid"),
             DataStreamMonitoring(
                 monitors,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint(name+".pkl", after_epoch=True, save_separately=['log', 'model']),
+            MyCheckpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Dump(name),
-            Plot(name, channels=plot_channels),
+            # Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
     if oldmodel is not None:
@@ -256,7 +322,9 @@ def main(name, epochs, batch_size, learning_rate,
 if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
-                default="mnist", help="Name for this experiment")
+                default=None, help="Name for this experiment")
+    parser.add_argument("--dataset", type=str, dest="dataset",
+                default="bmnist", help="Dataset to use: [bmnist|mnist|sketch]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
@@ -275,6 +343,8 @@ if __name__ == "__main__":
                 default=100, help="Z-vector dimension")
     parser.add_argument("--oldmodel", type=str,
                 help="Use a model pkl file created by a previous run as a starting point for all parameters")
+    parser.add_argument("--sz", "--image-size", type=int, dest="image_size",
+                help="width and height of each image in dataset")
     args = parser.parse_args()
 
     main(**vars(args))
