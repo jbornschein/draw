@@ -5,7 +5,7 @@ language: python
 
 python:
     - "2.7"
-    - "3.4"
+#    - "3.4"
 
 before_install:
     - shippable_retry apt-get update
