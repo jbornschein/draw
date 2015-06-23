@@ -10,7 +10,6 @@ import cPickle as pickle
 import numpy as np
 import os
 
-
 from PIL import Image
 from blocks.main_loop import MainLoop
 from blocks.model import AbstractModel
