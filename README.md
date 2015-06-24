@@ -86,7 +86,7 @@ Testing
 -------
 Run 
 
-    nosetest2 -v draw/ 
+    nosetests -v tests
 
 to execute the testsuite. Run 
 
