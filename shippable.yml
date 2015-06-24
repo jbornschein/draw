@@ -1,30 +1,11 @@
-# language setting
-build_image: shippableimages/ubuntu1404_python
+build_image: jbornschein/blocks
 
 language: python
 
 python:
     - "2.7"
-#    - "3.4"
 
-before_install:
-    - shippable_retry apt-get update
-    - shippable_retry apt-get install -y wget
-    - cp theanorc $HOME/.theanorc
-    - wget -q http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-    - chmod +x miniconda.sh
-    - ./miniconda.sh -b
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - conda update -q --yes conda
- 
 install:
-    - wget -q https://raw.githubusercontent.com/mila-udem/blocks/$TRAVIS_BRANCH/req-travis-conda.txt
-    - conda install -q --yes python=$TRAVIS_PYTHON_VERSION mkl --file req-travis-conda.txt
-    - pip install -r https://raw.githubusercontent.com/mila-udem/blocks/$TRAVIS_BRANCH/req-travis-pip.txt
-    - pip install -e git+git://github.com/mila-udem/blocks.git@$TRAVIS_BRANCH#egg=blocks --src=$HOME -r https://raw.githubusercontent.com/mila-udem/blocks/$TRAVIS_BRANCH/requirements.txt
     - pip install -r requirements.txt
-    - export FUEL_DATA_PATH=/tmp/fuel-data
-    - mkdir $FUEL_DATA_PATH
-    - sh obtain-data.sh
 
 script: nosetests -v draw
