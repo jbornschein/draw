@@ -17,7 +17,7 @@ import ipdb
 import time
 import cPickle as pickle
 
-import blocks.extras
+#import blocks.extras
 
 from argparse import ArgumentParser
 from theano import tensor
@@ -38,7 +38,7 @@ from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
-from blocks.extras.extensions.plot import Plot
+#from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
 
