@@ -1,4 +1,3 @@
 ipdb
-#-e git+http://github.com:mila-udem/fuel.git#egg=fuel-master
-#-e git+http://github.com:mila-udem/blocks.git#egg=blocks-master
-#-e git+http://github.com:mila-udem/blocks-extras.git#egg=blocks.extras-master
+fuel
+blocks
