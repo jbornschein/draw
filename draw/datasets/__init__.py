@@ -1,8 +1,8 @@
 
 from __future__ import division
 
-supported_datasets = ['bmnist', 'mnist', 'silhouettes']
-# 'tfd' is missing but needs normalization
+supported_datasets = ['bmnist', 'silhouettes']
+# ToDo: # 'mnist' and 'tfd' are not normalized (0<= x <=1.)
 
 
 def get_data(data_name):
