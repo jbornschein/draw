@@ -20,12 +20,19 @@ This will install all the other dependencies for you (Theano, Fuel, etc.).
  * [Fuel](https://github.com/bartvm/fuel)
  * [picklable_itertools](https://github.com/dwf/picklable_itertools)
 
+Draw currently works with the "cutting-edge development version". But since the API is subject to change,
+you might consider installing this known to be supported version:
+
+```
+pip install --upgrade git+git://github.com/mila-udem/blocks.git@c528d097 \
+  -r https://raw.githubusercontent.com/mila-udem/blocks/master/requirements.txt
+```
+
 You also need to install
 
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
  * [ipdb](https://pypi.python.org/pypi/ipdb)
  * [ImageMagick](http://www.imagemagick.org/)
-
 
 Data
 ----
