@@ -44,6 +44,7 @@ from blocks.model import Model
 
 import draw.datasets as datasets
 from draw.draw import *
+from draw.samplecheckpoint import SampleCheckpoint
 
 
 #----------------------------------------------------------------------------
@@ -114,7 +115,7 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
     lr_str = lr_tag(learning_rate)
 
-    subdir = time.strftime("%Y%m%d-%H%M%S") + "-" + name;
+    subdir = name + "-" + time.strftime("%Y%m%d-%H%M%S");
     longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
     pickle_file = subdir + "/" + longname + ".pkl"
 
@@ -236,8 +237,8 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            #Checkpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            Checkpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
+            SampleCheckpoint(image_size=image_size[0], save_subdir=subdir, before_training=True, after_epoch=True),
             # Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
