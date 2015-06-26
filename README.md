@@ -1,5 +1,5 @@
 
-[![Build Status](https://api.shippable.com/projects/557c82e6edd7f2c05214d9ce/badge?branchName=master)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
+[![Build Status](https://img.shields.io/shippable/557c82e6edd7f2c05214d9ce/master.svg?style=flat-square)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
 [![Affero GPUv3](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/agpl-3.0/)
 
 
@@ -11,16 +11,16 @@ A. Graves and D. Wierstra. The original paper can be found at
 
   http://arxiv.org/pdf/1502.04623
 
+
 Dependencies
 ------------
- * [Blocks](https://github.com/bartvm/blocks) follow
-the [install instructions](http://blocks.readthedocs.org/en/latest/setup.html).
-This will install all the other dependencies for you (Theano, Fuel, etc.).
- * [Theano](https://github.com/theano/Theano)
- * [Fuel](https://github.com/bartvm/fuel)
- * [picklable_itertools](https://github.com/dwf/picklable_itertools)
+ * [Theano](https://github.com/theano/Theano),
+[Fuel](https://github.com/mila-udem/fuel), 
+[Blocks](https://github.com/mila-udem/blocks): follow the Blocks
+[installation instructions](http://blocks.readthedocs.org/en/latest/setup.html)
+which will install most of the other dependencies for you.
 
-You also need to install
+To run the visualizations you additionally need to install
 
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
  * [ipdb](https://pypi.python.org/pypi/ipdb)
@@ -29,12 +29,11 @@ You also need to install
 
 Data
 ----
-You need to set the location of your data directory:
+You need to set the location of your data directory and obtain the binarized
+MNIST dataset:
 
-    export FUEL_DATA_PATH=/home/user/data
-
-and download the binarized MNIST data. To do that using the latest version of Fuel:
-
+    export FUEL_DATA_PATH=/home/$USER/data
+    mkdir $FUEL_DATA_PATH
     cd $FUEL_DATA_PATH
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
@@ -47,16 +46,14 @@ Training with attention
 Before training you need to start the bokeh-server
 
     bokeh-server
-or
-
-    bokeh-server --ip 0.0.0.0
 
 To train a model with a 2x2 read and a 5x5 write attention window run
 
     cd draw
     ./train-draw.py --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
 
-On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. Once training starts you can track its
+On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start.
+Once training starts you can track its 
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 2 days to train the model. After each epoch it will save the following files:
 
