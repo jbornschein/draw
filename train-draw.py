@@ -45,6 +45,7 @@ from blocks.model import Model
 import draw.datasets as datasets
 from draw.draw import *
 from draw.samplecheckpoint import SampleCheckpoint
+from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 
 
 #----------------------------------------------------------------------------
@@ -237,7 +238,7 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
+            PartsOnlyCheckpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
             SampleCheckpoint(image_size=image_size[0], save_subdir=subdir, before_training=True, after_epoch=True),
             # Plot(name, channels=plot_channels),
             ProgressBar(),
