@@ -57,9 +57,9 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
     image_size, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-    train_stream = Flatten(DataStream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
-    valid_stream = Flatten(DataStream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
+    train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
+    valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
 
     if name is None:
         name = dataset
