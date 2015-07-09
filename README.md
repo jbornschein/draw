@@ -1,13 +1,15 @@
 
-Reimplementation of the DRAW network architecture
-=================================================
+[![Build Status](https://api.shippable.com/projects/557c82e6edd7f2c05214d9ce/badge?branchName=master)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
+[![Affero GPUv3](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/agpl-3.0/)
 
+
+Implementation of the DRAW network architecture
+-----------------------------------------------
 This repository contains a reimplementation of the Deep Recurrent Attentive
 Writer (DRAW) network architecture introduced by K. Gregor, I. Danihelka,
 A. Graves and D. Wierstra. The original paper can be found at
 
   http://arxiv.org/pdf/1502.04623
-
 
 Dependencies
 ------------
@@ -18,34 +20,39 @@ This will install all the other dependencies for you (Theano, Fuel, etc.).
  * [Fuel](https://github.com/bartvm/fuel)
  * [picklable_itertools](https://github.com/dwf/picklable_itertools)
 
+Draw currently works with the "cutting-edge development version". But since the API is subject to change,
+you might consider installing this known to be supported version:
+
+```
+pip install --upgrade git+git://github.com/mila-udem/blocks.git@c528d097 \
+  -r https://raw.githubusercontent.com/mila-udem/blocks/master/requirements.txt
+```
+
 You also need to install
 
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
  * [ipdb](https://pypi.python.org/pypi/ipdb)
  * [ImageMagick](http://www.imagemagick.org/)
 
-
 Data
 ----
 You need to set the location of your data directory:
 
-    # used at runtime to find data
-    echo "data_path: /home/user/data" >> ~/.fuelrc
+    export FUEL_DATA_PATH=/home/user/data
 
-You need to download binarized MNIST data. To do that using the latest version of Fuel:
+and download the binarized MNIST data. To do that using the latest version of Fuel:
 
-    export PYLEARN2_DATA_PATH=/home/user/data
+    cd $FUEL_DATA_PATH
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
-    mv binarized_mnist* $PYLEARN2_DATA_PATH/.
 
 Similarly for cifar10:
 
+    cd $FUEL_DATA_PATH
     fuel-download cifar10
     fuel-convert cifar10
-    mv cifar* $PYLEARN2_DATA_PATH/.
     
-The [datasets/README.md](./datasets/README.md) file has instructions for additional data-sets.
+The [datasets/README.md](./draw/datasets/README.md) file has instructions for additional data-sets.
 
 
 Training with attention
@@ -90,15 +97,20 @@ to create a visualization of the KL divergence potted over inference iterations 
 
 Testing
 -------
-
 Run 
 
+    nosetests -v tests
+
+to execute the testsuite. Run 
+
+    cd draw
     ./attention.py
 
-to test the attention windowing code. It will open three windows: A window 
-displaying the original input image, a window displaying some extracted,
-downsampled content (testing the read-operation), and a window showing the
-upsampled content (matching the input size) after the write operation.
+to test the attention windowing code on some image. It will open three windows:
+A window displaying the original input image, a window displaying some
+extracted, downsampled content (testing the read-operation), and a window
+showing the upsampled content (matching the input size) after the write
+operation.
 
 Note
 ----

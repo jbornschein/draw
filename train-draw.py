@@ -14,126 +14,57 @@ import theano
 import theano.tensor as T
 import fuel
 import ipdb
+import time
+import cPickle as pickle
+
+#import blocks.extras
 
 from argparse import ArgumentParser
-from collections import OrderedDict
 from theano import tensor
 
 from fuel.streams import DataStream
 from fuel.schemes import SequentialScheme
-from fuel.datasets import H5PYDataset
 from fuel.transformers import Flatten
 
 from blocks.algorithms import GradientDescent, CompositeRule, StepClipping, RMSProp, Adam
+from blocks.bricks import Tanh, Identity
+from blocks.bricks.cost import BinaryCrossEntropy
+from blocks.bricks.recurrent import SimpleRecurrent, LSTM
 from blocks.initialization import Constant, IsotropicGaussian, Orthogonal 
 from blocks.filter import VariableFilter
 from blocks.graph import ComputationGraph
 from blocks.roles import PARAMETER
 from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
-from blocks.extensions.plot import Plot
-from blocks.extensions.saveload import Checkpoint, Dump
+from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
+#from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
 from blocks.bricks import Identity
-from blocks.bricks.cost import BinaryCrossEntropy
-from blocks.bricks.recurrent import SimpleRecurrent, LSTM
-import cPickle as pickle
 
-from draw import *
+import draw.datasets as datasets
+from draw.draw import *
+from draw.samplecheckpoint import SampleCheckpoint
+from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 
-fuel.config.floatX = theano.config.floatX
-
-from sample import generate_samples
-from blocks.serialization import secure_pickle_dump
-LOADED_FROM = "loaded_from"
-SAVED_TO = "saved_to"
-class MyCheckpoint(Checkpoint):
-    def __init__(self, image_size, channels, **kwargs):
-        super(MyCheckpoint, self).__init__(**kwargs)
-        self.image_size = image_size
-        self.channels = channels
-
-    def do(self, callback_name, *args):
-        """Pickle the main loop object to the disk.
-
-        If `*args` contain an argument from user, it is treated as
-        saving path to be used instead of the one given at the
-        construction stage.
-
-        """
-        from_main_loop, from_user = self.parse_args(callback_name, args)
-        try:
-            path = self.path
-            if len(from_user):
-                path, = from_user
-#            already_saved_to = self.main_loop.log.current_row.get(SAVED_TO, ())
-#            self.main_loop.log.current_row[SAVED_TO] = (
-#                already_saved_to + (path,))
-#            secure_pickle_dump(self.main_loop, path)
-            filenames = self.save_separately_filenames(path)
-            for attribute in self.save_separately:
-                p = getattr(self.main_loop, attribute)
-                if p:
-                    secure_pickle_dump(p, filenames[attribute])
-                else:
-                    print("Empty %s",attribute)
-            generate_samples(self.main_loop, self.image_size, self.channels)
-        except Exception:
-            self.main_loop.log.current_row[SAVED_TO] = None
-            raise
 
 #----------------------------------------------------------------------------
+
 def main(name, dataset, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel, image_size):
+         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
 
-    datasource = dataset
-    if datasource == 'bmnist':
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
-        image_size = 28
-    if datasource == 'sketch':
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
-        image_size = 56
-    elif dataset == "cifar10":
-        if image_size is not None:
-            raise Exception('image size for data source %s is pre configured'%datasource)
-        image_size = 32
-    else:
-        if image_size is None:
-            raise Exception('Undefined image size for data source %s'%datasource)
+    image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-    print("Datasource is " + datasource)
+    train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
+    valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
 
-    if datasource == 'bmnist':
-        from fuel.datasets.binarized_mnist import BinarizedMNIST
-        channels, img_width, img_width = 1, 28, 28
-        train_ds = BinarizedMNIST("train", sources=['features'])
-        test_ds = BinarizedMNIST("test", sources=['features'])
-    elif datasource == 'cifar10':
-        from fuel.datasets.cifar10 import CIFAR10
-        channels, img_width, img_width = 3, 32, 32
-        train_ds = CIFAR10("train", sources=['features'])
-        test_ds = CIFAR10("test", sources=['features'])
-    elif datasource == 'sketch':
-        import sys
-        sys.path.append("../datasets")
-        from binarized_sketch import BinarizedSketch
-        channels, img_width, img_width = 1, 28, 28
-        train_ds = BinarizedSketch("train", sources=['features'])
-        test_ds = BinarizedSketch("test", sources=['features'])
-    else:
-        datasource_fname = os.path.join(fuel.config.data_path, datasource , datasource+'.hdf5')
-        train_ds = H5PYDataset(datasource_fname, which_set='train', sources=['features'])
-        test_ds = H5PYDataset(datasource_fname, which_set='test', sources=['features'])
-    train_stream = Flatten(DataStream(train_ds, iteration_scheme=SequentialScheme(train_ds.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(test_ds,  iteration_scheme=SequentialScheme(test_ds.num_examples, batch_size)))
+    if name is None:
+        name = dataset
 
-
-    x_dim = image_size * image_size
-    img_height = img_width = image_size
+    img_height, img_width = image_size
+    x_dim = channels * img_height * img_width
 
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -191,9 +122,14 @@ def main(name, dataset, epochs, batch_size, learning_rate,
         return "%s%d" % (leading, -exp)
 
     lr_str = lr_tag(learning_rate)
-    name = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (name, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
 
-    print("\nRunning experiment %s" % name)
+    subdir = name + "-" + time.strftime("%Y%m%d-%H%M%S");
+    longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
+    pickle_file = subdir + "/" + longname + ".pkl"
+
+    print("\nRunning experiment %s" % longname)
+    print("               dataset: %s" % dataset)
+    print("          subdirectory: %s" % subdir)
     print("         learning rate: %g" % learning_rate)
     print("             attention: %s" % attention)
     print("          n_iterations: %d" % n_iter)
@@ -201,6 +137,7 @@ def main(name, dataset, epochs, batch_size, learning_rate,
     print("           z dimension: %d" % z_dim)
     print("     decoder dimension: %d" % dec_dim)
     print("            batch size: %d" % batch_size)
+    print("                epochs: %d" % epochs)
     print()
 
     #----------------------------------------------------------------------
@@ -276,6 +213,9 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------
 
+    if not os.path.exists(subdir):
+        os.makedirs(subdir)
+
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=train_stream,
@@ -297,17 +237,19 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            MyCheckpoint(image_size=image_size, channels=channels, path=name+".pkl", before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            #Dump(name),
-            Plot(name, channels=plot_channels),
+            PartsOnlyCheckpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
+            SampleCheckpoint(image_size=image_size[0], channels=channels, save_subdir=subdir, before_training=True, after_epoch=True),
+            # Plot(name, channels=plot_channels),
             ProgressBar(),
             Printing()])
+
     if oldmodel is not None:
         print("Initializing parameters with old model %s"%oldmodel)
         with open(oldmodel, "rb") as f:
             oldmodel = pickle.load(f)
             main_loop.model.set_param_values(oldmodel.get_param_values())
         del oldmodel
+
     main_loop.run()
 
 #-----------------------------------------------------------------------------
@@ -316,8 +258,8 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
-    parser.add_argument("--dataset", "--data", type=str, dest="dataset",
-                default="bmnist", help="Dataset to use: [bmnist|cifar10]")
+    parser.add_argument("--dataset", type=str, dest="dataset",
+                default="bmnist", help="Dataset to use: [bmnist|mnist|cifar10]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
@@ -336,9 +278,6 @@ if __name__ == "__main__":
                 default=100, help="Z-vector dimension")
     parser.add_argument("--oldmodel", type=str,
                 help="Use a model pkl file created by a previous run as a starting point for all parameters")
-    parser.add_argument("--sz", "--image-size", type=int, dest="image_size",
-                help="width and height of each image in dataset")
     args = parser.parse_args()
 
     main(**vars(args))
-
