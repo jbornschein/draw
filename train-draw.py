@@ -41,7 +41,6 @@ from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonit
 #from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks import Identity
 
 import draw.datasets as datasets
 from draw.draw import *
@@ -77,16 +76,13 @@ def main(name, dataset, epochs, batch_size, learning_rate,
         'biases_init': Constant(0.),
     }
 
-
-    x_dim = channels*img_width*img_height  # a single flattened datapoint
-
     # Configure attention mechanism
     if attention != "":
         read_N, write_N = attention.split(',')
     
         read_N = int(read_N)
         write_N = int(write_N)
-        read_dim = 2*channels*read_N**2
+        read_dim = 2 * channels * read_N ** 2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
                                  channels=channels, width=img_width, height=img_height,
@@ -102,7 +98,6 @@ def main(name, dataset, epochs, batch_size, learning_rate,
         writer = Writer(input_dim=dec_dim, output_dim=x_dim, **inits)
 
         attention_tag = "full"
-        # attention_tag = "noatt"
 
     #----------------------------------------------------------------------
 
@@ -161,7 +156,6 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
-    x = x / 255.
     
     x_recons, kl_terms = draw.reconstruct(x)
 
