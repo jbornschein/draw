@@ -25,7 +25,7 @@ def scale_norm(arr):
     return arr / scale
 
 def img_grid(arr, global_scale=True):
-    N, height, width, channels = arr.shape
+    N, channels, height, width = arr.shape
 
     rows = int(np.sqrt(N))
     cols = int(np.sqrt(N))
@@ -42,7 +42,7 @@ def img_grid(arr, global_scale=True):
     if global_scale:
         arr = scale_norm(arr)
 
-    I = np.zeros((total_height, total_width, channels))
+    I = np.zeros((channels, total_height, total_width))
 
     for i in xrange(N):
         r = i // cols
@@ -54,12 +54,14 @@ def img_grid(arr, global_scale=True):
             this = scale_norm(arr[i])
 
         offset_y, offset_x = r*height, c*width
-        I[offset_y:(offset_y+height), offset_x:(offset_x+width),0:channels] = this
+        I[0:channels, offset_y:(offset_y+height), offset_x:(offset_x+width)] = this
     
     I = (255*I).astype(np.uint8)
     if(channels == 1):
-        I = I.reshape( (total_height, total_width) )
-    return Image.fromarray(I)
+        out = I.reshape( (total_height, total_width) )
+    else:
+        out = np.dstack(I).astype(np.uint8)
+    return Image.fromarray(out)
 
 def generate_samples(p, subdir, output_size, channels):
     if isinstance(p, AbstractModel):
@@ -91,7 +93,7 @@ def generate_samples(p, subdir, output_size, channels):
     n_iter, N, D = samples.shape
     # logging.info("SHAPE IS: {}".format(samples.shape))
 
-    samples = samples.reshape( (n_iter, N, output_size, output_size, channels) )
+    samples = samples.reshape( (n_iter, N, channels, output_size, output_size) )
 
     if(n_iter > 0):
         img = img_grid(samples[n_iter-1,:,:,:])

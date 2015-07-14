@@ -20,6 +20,14 @@ def get_data(data_name):
         data_train = BinarizedMNIST(which_sets=['train'], sources=['features'])
         data_valid = BinarizedMNIST(which_sets=['valid'], sources=['features'])
         data_test  = BinarizedMNIST(which_sets=['test'], sources=['features'])
+    # TODO: make a generic catch-all for loading custom datasets like "colormnist"
+    elif data_name == 'colormnist':
+        from draw.colormnist import ColorMNIST
+        img_size = (28, 28)
+        channels = 3
+        data_train = ColorMNIST(which_sets=['train'], sources=['features'])
+        data_valid = ColorMNIST(which_sets=['test'], sources=['features'])
+        data_test  = ColorMNIST(which_sets=['test'], sources=['features'])
     elif data_name == 'cifar10':
         from fuel.datasets.cifar10 import CIFAR10
         img_size = (32, 32)
@@ -27,6 +35,13 @@ def get_data(data_name):
         data_train = CIFAR10(which_sets=['train'], sources=['features'])
         data_valid = CIFAR10(which_sets=['test'], sources=['features'])
         data_test  = CIFAR10(which_sets=['test'], sources=['features'])
+    elif data_name == 'svhn2':
+        from fuel.datasets.svhn import SVHN
+        img_size = (32, 32)
+        channels = 3
+        data_train = SVHN(which_format=2,which_sets=['train'], sources=['features'])
+        data_valid = SVHN(which_format=2,which_sets=['test'], sources=['features'])
+        data_test  = SVHN(which_format=2,which_sets=['test'], sources=['features'])
     elif data_name == 'silhouettes':
         from fuel.datasets.caltech101_silhouettes import CalTech101Silhouettes
         img_size = (28, 28)
