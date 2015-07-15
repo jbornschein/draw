@@ -24,25 +24,33 @@ def scale_norm(arr):
     scale = (arr.max() - arr.min())
     return arr / scale
 
+# these aren't paramed yet in a generic way, but these values work
+ROWS = 10
+COLS = 20
+
 def img_grid(arr, global_scale=True):
     N, channels, height, width = arr.shape
 
-    rows = int(np.sqrt(N))
-    cols = int(np.sqrt(N))
+    global ROWS, COLS
+    rows = ROWS
+    cols = COLS
+    # rows = int(np.sqrt(N))
+    # cols = int(np.sqrt(N))
 
-    if rows*cols < N:
-        cols = cols + 1
+    # if rows*cols < N:
+    #     cols = cols + 1
 
-    if rows*cols < N:
-        rows = rows + 1
+    # if rows*cols < N:
+    #     rows = rows + 1
 
-    total_height = rows * height
-    total_width  = cols * width
+    total_height = rows * height + 9
+    total_width  = cols * width + 19
 
     if global_scale:
         arr = scale_norm(arr)
 
     I = np.zeros((channels, total_height, total_width))
+    I.fill(1)
 
     for i in xrange(N):
         r = i // cols
@@ -53,7 +61,7 @@ def img_grid(arr, global_scale=True):
         else:
             this = scale_norm(arr[i])
 
-        offset_y, offset_x = r*height, c*width
+        offset_y, offset_x = r*height+r, c*width+c
         I[0:channels, offset_y:(offset_y+height), offset_x:(offset_x+width)] = this
     
     I = (255*I).astype(np.uint8)
@@ -87,7 +95,8 @@ def generate_samples(p, subdir, output_size, channels):
     #------------------------------------------------------------
     logging.info("Sampling and saving images...")
 
-    samples = do_sample(16*16)
+    global ROWS, COLS
+    samples = do_sample(ROWS*COLS)
     #samples = np.random.normal(size=(16, 100, 28*28))
 
     n_iter, N, D = samples.shape
