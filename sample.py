@@ -108,13 +108,13 @@ def generate_samples(p, subdir, output_size, channels):
         img = img_grid(samples[n_iter-1,:,:,:])
         img.save("{0}/sample.png".format(subdir))
 
-    for i in xrange(n_iter):
+    for i in xrange(n_iter-1):
         img = img_grid(samples[i,:,:,:])
-        img.save("{0}/sample-{1:03d}.png".format(subdir, i))
+        img.save("{0}/time-{1:03d}.png".format(subdir, i))
 
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
-    os.system("convert -delay 5 -loop 1 {0}/sample-*.png {0}/samples.gif".format(subdir))
+    os.system("convert -delay 5 {0}/time-*.png -delay 300 {0}/sample.png {0}/sequence.gif".format(subdir))
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
