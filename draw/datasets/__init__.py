@@ -44,7 +44,8 @@ def get_data(data_name):
         data_test  = SVHN(which_format=2,which_sets=['test'], sources=['features'])
     elif data_name == 'silhouettes':
         from fuel.datasets.caltech101_silhouettes import CalTech101Silhouettes
-        img_size = (28, 28)
+        size = 28
+        img_size = (size, size)
         channels = 1
         data_train = CalTech101Silhouettes(which_sets=['train'], size=size, sources=['features'])
         data_valid = CalTech101Silhouettes(which_sets=['valid'], size=size, sources=['features'])

@@ -9,7 +9,7 @@ import draw.datasets as datasets
 def test_shape():
     def check_dataset(name):
         try:
-            img_shape, data_train, data_valid, data_test = datasets.get_data(name)
+            img_shape, channels, data_train, data_valid, data_test = datasets.get_data(name)
         except IOError as e:
             raise SkipTest
 
@@ -29,7 +29,7 @@ def test_shape():
 def test_range():
     def check_dataset(name):
         try:
-            img_shape, data_train, data_valid, data_test = datasets.get_data(name)
+            img_shape, channels, data_train, data_valid, data_test = datasets.get_data(name)
         except IOError as e:
             raise SkipTest
 
