@@ -30,16 +30,18 @@ def my_batched_dot(A, B):
 #-----------------------------------------------------------------------------
 
 class ZoomableAttentionWindow(object):
-    def __init__(self, img_height, img_width, N):
+    def __init__(self, channels, img_height, img_width, N):
         """A zoomable attention window for images.
 
         Parameters
         ----------
+        channels : int
         img_heigt, img_width : int
             shape of the images 
         N : 
             $N \times N$ attention window size
         """
+        self.channels = channels
         self.img_height = img_height
         self.img_width = img_width
         self.N = N
@@ -105,18 +107,22 @@ class ZoomableAttentionWindow(object):
             extracted windows of shape: (batch_size x N**2)
         """
         N = self.N
+        channels = self.channels
         batch_size = images.shape[0]
 
         # Reshape input into proper 2d images
-        I = images.reshape( (batch_size, self.img_height, self.img_width) )
+        I = images.reshape( (batch_size*channels, self.img_height, self.img_width) )
 
         # Get separable filterbank
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
+        FY = T.repeat(FY, channels, axis=0)
+        FX = T.repeat(FX, channels, axis=0)
+
         # apply to the batch of images
         W = my_batched_dot(my_batched_dot(FY, I), FX.transpose([0,2,1]))
 
-        return W.reshape((batch_size, N*N))
+        return W.reshape((batch_size, channels*N*N))
 
     def write(self, windows, center_y, center_x, delta, sigma):
         """Write a batch of windows into full sized images.
@@ -146,18 +152,22 @@ class ZoomableAttentionWindow(object):
             extracted windows of shape: (batch_size x img_height*img_width)
         """
         N = self.N
+        channels = self.channels
         batch_size = windows.shape[0]
 
         # Reshape input into proper 2d windows
-        W = windows.reshape( (batch_size, N, N) )
+        W = windows.reshape( (batch_size*channels, N, N) )
 
         # Get separable filterbank
         FY, FX = self.filterbank_matrices(center_y, center_x, delta, sigma)
 
+        FY = T.repeat(FY, channels, axis=0)
+        FX = T.repeat(FX, channels, axis=0)
+
         # apply...
         I = my_batched_dot(my_batched_dot(FY.transpose([0,2,1]), W), FX)
 
-        return I.reshape( (batch_size, self.img_height*self.img_width) )
+        return I.reshape( (batch_size, channels*self.img_height*self.img_width) )
 
     def nn2att(self, l):
         """Convert neural-net outputs to attention parameters
@@ -198,11 +208,12 @@ if __name__ == "__main__":
     from PIL import Image
 
     N = 40 
+    channels = 3
     height = 480
     width =  640
 
     #------------------------------------------------------------------------
-    att = ZoomableAttentionWindow(height, width, N)
+    att = ZoomableAttentionWindow(channels, height, width, N)
 
     I_ = T.matrix()
     center_y_ = T.vector()
@@ -227,9 +238,10 @@ if __name__ == "__main__":
     #------------------------------------------------------------------------
 
     I = Image.open("cat.jpg")
-    I = I.resize((640, 480)).convert('L')
+    I = I.resize((640, 480)) #.convert('L')
     
-    I = np.asarray(I).reshape( (width*height) )
+    I = np.asarray(I).transpose([2, 0, 1])
+    I = I.reshape( (channels*width*height) )
     I = I / 255.
 
     center_y = 200.5
@@ -247,19 +259,25 @@ if __name__ == "__main__":
 
     W  = do_read(I, center_y, center_x, delta, sigma)
     I2 = do_write(W, center_y, center_x, delta, sigma)
+
+    def imagify(flat_image, h, w):
+        image = flat_image.reshape([channels, h, w])
+        image = image.transpose([1, 2, 0])
+        return image / image.max()
+
     
     import pylab
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(imagify(I, height, width), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(W.reshape([N, N]), interpolation='nearest')
+    pylab.imshow(imagify(W, N, N), interpolation='nearest')
 
     pylab.figure()
     pylab.gray()
-    pylab.imshow(I2.reshape([height, width]), interpolation='nearest')
+    pylab.imshow(imagify(I2, height, width), interpolation='nearest')
     pylab.show(block=True)
     
     import ipdb; ipdb.set_trace()

@@ -45,6 +45,12 @@ and download the binarized MNIST data. To do that using the latest version of Fu
     cd $FUEL_DATA_PATH
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
+
+Similarly for cifar10:
+
+    cd $FUEL_DATA_PATH
+    fuel-download cifar10
+    fuel-convert cifar10
     
 The [datasets/README.md](./draw/datasets/README.md) file has instructions for additional data-sets.
 
@@ -67,8 +73,8 @@ On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and 
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 2 days to train the model. After each epoch it will save the following files:
 
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model [issue: access denied]
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl) [issue: access denied]
 of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog)
  * [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) showing how the creation of the result.
 

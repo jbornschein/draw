@@ -24,25 +24,33 @@ def scale_norm(arr):
     scale = (arr.max() - arr.min())
     return arr / scale
 
+# these aren't paramed yet in a generic way, but these values work
+ROWS = 10
+COLS = 20
+
 def img_grid(arr, global_scale=True):
-    N, height, width = arr.shape
+    N, channels, height, width = arr.shape
 
-    rows = int(np.sqrt(N))
-    cols = int(np.sqrt(N))
+    global ROWS, COLS
+    rows = ROWS
+    cols = COLS
+    # rows = int(np.sqrt(N))
+    # cols = int(np.sqrt(N))
 
-    if rows*cols < N:
-        cols = cols + 1
+    # if rows*cols < N:
+    #     cols = cols + 1
 
-    if rows*cols < N:
-        rows = rows + 1
+    # if rows*cols < N:
+    #     rows = rows + 1
 
-    total_height = rows * height
-    total_width  = cols * width
+    total_height = rows * height + 9
+    total_width  = cols * width + 19
 
     if global_scale:
         arr = scale_norm(arr)
 
-    I = np.zeros((total_height, total_width))
+    I = np.zeros((channels, total_height, total_width))
+    I.fill(1)
 
     for i in xrange(N):
         r = i // cols
@@ -53,13 +61,17 @@ def img_grid(arr, global_scale=True):
         else:
             this = scale_norm(arr[i])
 
-        offset_y, offset_x = r*height, c*width
-        I[offset_y:(offset_y+height), offset_x:(offset_x+width)] = this
+        offset_y, offset_x = r*height+r, c*width+c
+        I[0:channels, offset_y:(offset_y+height), offset_x:(offset_x+width)] = this
     
     I = (255*I).astype(np.uint8)
-    return Image.fromarray(I)
+    if(channels == 1):
+        out = I.reshape( (total_height, total_width) )
+    else:
+        out = np.dstack(I).astype(np.uint8)
+    return Image.fromarray(out)
 
-def generate_samples(p, subdir, output_size):
+def generate_samples(p, subdir, output_size, channels):
     if isinstance(p, AbstractModel):
         model = p
     else:
@@ -83,30 +95,34 @@ def generate_samples(p, subdir, output_size):
     #------------------------------------------------------------
     logging.info("Sampling and saving images...")
 
-    samples = do_sample(16*16)
+    global ROWS, COLS
+    samples = do_sample(ROWS*COLS)
     #samples = np.random.normal(size=(16, 100, 28*28))
 
     n_iter, N, D = samples.shape
+    # logging.info("SHAPE IS: {}".format(samples.shape))
 
-    samples = samples.reshape( (n_iter, N, output_size, output_size) )
+    samples = samples.reshape( (n_iter, N, channels, output_size, output_size) )
 
     if(n_iter > 0):
         img = img_grid(samples[n_iter-1,:,:,:])
         img.save("{0}/sample.png".format(subdir))
 
-    for i in xrange(n_iter):
+    for i in xrange(n_iter-1):
         img = img_grid(samples[i,:,:,:])
-        img.save("{0}/sample-{1:03d}.png".format(subdir, i))
+        img.save("{0}/time-{1:03d}.png".format(subdir, i))
 
     #with open("centers.pkl", "wb") as f:
     #    pikle.dump(f, (center_y, center_x, delta))
-    os.system("convert -delay 5 -loop 1 {0}/sample-*.png {0}/samples.gif".format(subdir))
+    os.system("convert -delay 5 {0}/time-*.png -delay 300 {0}/sample.png {0}/sequence.gif".format(subdir))
 
 if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser()
     parser.add_argument("model_file", help="filename of a pickled DRAW model")
+    parser.add_argument("--channels", type=int,
+                default=1, help="number of channels")
     parser.add_argument("--size", type=int,
                 default=28, help="Output image size (width and height)")
     args = parser.parse_args()
@@ -119,7 +135,7 @@ if __name__ == "__main__":
     if not os.path.exists(subdir):
         os.makedirs(subdir)
 
-    generate_samples(p, subdir, args.size)
+    generate_samples(p, subdir, args.size, args.channels)
 
 
 
