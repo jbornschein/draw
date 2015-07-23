@@ -116,7 +116,7 @@ def main(name, epochs, batch_size, learning_rate):
 
     algorithm = GradientDescent(
         cost=cost, 
-        params=params,
+        parameters=params,
         step_rule=CompositeRule([
             RemoveNotFinite(),
             Adam(learning_rate),
