@@ -251,7 +251,7 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
         print("Initializing parameters with old model %s"%oldmodel)
         with open(oldmodel, "rb") as f:
             oldmodel = pickle.load(f)
-            main_loop.model.set_param_values(oldmodel.get_param_values())
+            main_loop.model.set_parameter_values(oldmodel.get_param_values())
         del oldmodel
 
     main_loop.run()
