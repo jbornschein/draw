@@ -17,7 +17,10 @@ import ipdb
 import time
 import cPickle as pickle
 
-import blocks.extras
+try:
+    import blocks.extras
+except ImportError:
+    pass
 
 from argparse import ArgumentParser
 from theano import tensor
@@ -45,12 +48,13 @@ from blocks.model import Model
 import draw.datasets as datasets
 from draw.draw import *
 
+sys.setrecursionlimit(100000)
 
 #----------------------------------------------------------------------------
 
 
-def main(name, dataset, epochs, batch_size, learning_rate, 
-         attention, n_iter, enc_dim, dec_dim, z_dim, oldmodel):
+def main(name, dataset, epochs, batch_size, learning_rate, attention,
+            n_iter, enc_dim, dec_dim, z_dim, oldmodel, live_plotting):
 
 
     image_size, data_train, data_valid, data_test = datasets.get_data(dataset)
@@ -215,6 +219,12 @@ def main(name, dataset, epochs, batch_size, learning_rate,
     if not os.path.exists(subdir):
         os.makedirs(subdir)
 
+    plotting_extensions = []
+    if live_plotting:
+        plotting_extensions = [
+            Plot(name, channels=plot_channels)
+        ]
+
     main_loop = MainLoop(
         model=Model(cost),
         data_stream=train_stream,
@@ -238,9 +248,8 @@ def main(name, dataset, epochs, batch_size, learning_rate,
                 prefix="test"),
             Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
             #Checkpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            # Plot(name, channels=plot_channels),
             ProgressBar(),
-            Printing()])
+            Printing()] + plotting_extensions)
 
     if oldmodel is not None:
         print("Initializing parameters with old model %s"%oldmodel)
@@ -255,6 +264,8 @@ def main(name, dataset, epochs, batch_size, learning_rate,
 
 if __name__ == "__main__":
     parser = ArgumentParser()
+    parser.add_argument("--live-plotting", "--plot", action="store_true",
+                default=False, help="Activate live-plotting to a bokeh-server")
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
     parser.add_argument("--dataset", type=str, dest="dataset",
