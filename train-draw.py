@@ -175,7 +175,7 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
 
     algorithm = GradientDescent(
         cost=cost, 
-        params=params,
+        parameters=params,
         step_rule=CompositeRule([
             StepClipping(10.), 
             Adam(learning_rate),
