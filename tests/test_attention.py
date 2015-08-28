@@ -42,11 +42,12 @@ def test_batched_dot():
 class TestZoomableAttentionWindow:
     def setUp(self):
         # Device under test
+        self.channels = 1
         self.height = 50
         self.width = 120
         self.N = 100
 
-        self.zaw = ZoomableAttentionWindow(self.height, self.width, self.N)
+        self.zaw = ZoomableAttentionWindow(self.channels, self.height, self.width, self.N)
 
     def test_filterbank_matrices(self):
         batch_size = 100

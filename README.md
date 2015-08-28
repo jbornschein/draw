@@ -1,6 +1,6 @@
 
 [![Build Status](https://api.shippable.com/projects/557c82e6edd7f2c05214d9ce/badge?branchName=master)](https://app.shippable.com/projects/557c82e6edd7f2c05214d9ce/builds/latest)
-[![Affero GPUv3](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/agpl-3.0/)
+[![MIT](https://img.shields.io/github/license/jbornschein/draw.svg?style=flat-square)](http://choosealicense.com/licenses/mit/)
 
 
 Implementation of the DRAW network architecture
@@ -20,12 +20,19 @@ This will install all the other dependencies for you (Theano, Fuel, etc.).
  * [Fuel](https://github.com/bartvm/fuel)
  * [picklable_itertools](https://github.com/dwf/picklable_itertools)
 
+Draw currently works with the "cutting-edge development version". But since the API is subject to change,
+you might consider installing this known to be supported version:
+
+```
+pip install --upgrade git+git://github.com/mila-udem/blocks.git@c528d097 \
+  -r https://raw.githubusercontent.com/mila-udem/blocks/master/requirements.txt
+```
+
 You also need to install
 
  * [Bokeh](http://bokeh.pydata.org/en/latest/docs/installation.html) 0.8.1+
  * [ipdb](https://pypi.python.org/pypi/ipdb)
  * [ImageMagick](http://www.imagemagick.org/)
-
 
 Data
 ----
@@ -38,6 +45,12 @@ and download the binarized MNIST data. To do that using the latest version of Fu
     cd $FUEL_DATA_PATH
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
+
+Similarly for cifar10:
+
+    cd $FUEL_DATA_PATH
+    fuel-download cifar10
+    fuel-convert cifar10
     
 The [datasets/README.md](./draw/datasets/README.md) file has instructions for additional data-sets.
 
@@ -60,8 +73,8 @@ On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and 
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
 It will take about 2 days to train the model. After each epoch it will save the following files:
 
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl)
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model [issue: access denied]
+ * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl) [issue: access denied]
 of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog)
  * [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) showing how the creation of the result.
 
@@ -86,7 +99,7 @@ Testing
 -------
 Run 
 
-    nosetest2 -v draw/ 
+    nosetests -v tests
 
 to execute the testsuite. Run 
 

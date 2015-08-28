@@ -17,11 +17,6 @@ import ipdb
 import time
 import cPickle as pickle
 
-try:
-    import blocks.extras
-except ImportError:
-    pass
-
 from argparse import ArgumentParser
 from theano import tensor
 
@@ -41,33 +36,38 @@ from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import DataStreamMonitoring, TrainingDataMonitoring
-from blocks.extras.extensions.plot import Plot
 from blocks.main_loop import MainLoop
 from blocks.model import Model
 
+try:
+    from blocks.extras import Plot
+except ImportError:
+    pass
+
+
 import draw.datasets as datasets
 from draw.draw import *
+from draw.samplecheckpoint import SampleCheckpoint
+from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 
 sys.setrecursionlimit(100000)
 
 #----------------------------------------------------------------------------
 
-
-def main(name, dataset, epochs, batch_size, learning_rate, attention,
+def main(name, dataset, epochs, batch_size, learning_rate, attention, 
             n_iter, enc_dim, dec_dim, z_dim, oldmodel, live_plotting):
 
+    image_size, channels, data_train, data_valid, data_test = datasets.get_data(dataset)
 
-    image_size, data_train, data_valid, data_test = datasets.get_data(dataset)
-
-    train_stream = Flatten(DataStream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
-    valid_stream = Flatten(DataStream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
-    test_stream  = Flatten(DataStream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
+    train_stream = Flatten(DataStream.default_stream(data_train, iteration_scheme=SequentialScheme(data_train.num_examples, batch_size)))
+    valid_stream = Flatten(DataStream.default_stream(data_valid, iteration_scheme=SequentialScheme(data_valid.num_examples, batch_size)))
+    test_stream  = Flatten(DataStream.default_stream(data_test,  iteration_scheme=SequentialScheme(data_test.num_examples, batch_size)))
 
     if name is None:
         name = dataset
 
     img_height, img_width = image_size
-    x_dim = img_height * img_width
+    x_dim = channels * img_height * img_width
 
     rnninits = {
         #'weights_init': Orthogonal(),
@@ -79,19 +79,20 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
         'weights_init': IsotropicGaussian(0.01),
         'biases_init': Constant(0.),
     }
-    
+
+    # Configure attention mechanism
     if attention != "":
         read_N, write_N = attention.split(',')
     
         read_N = int(read_N)
         write_N = int(write_N)
-        read_dim = 2*read_N**2
+        read_dim = 2 * channels * read_N ** 2
 
         reader = AttentionReader(x_dim=x_dim, dec_dim=dec_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=read_N, **inits)
         writer = AttentionWriter(input_dim=dec_dim, output_dim=x_dim,
-                                 width=img_width, height=img_height,
+                                 channels=channels, width=img_width, height=img_height,
                                  N=write_N, **inits)
         attention_tag = "r%d-w%d" % (read_N, write_N)
     else:
@@ -103,6 +104,9 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
         attention_tag = "full"
 
     #----------------------------------------------------------------------
+
+    if name is None:
+        name = dataset
 
     # Learning rate
     def lr_tag(value):
@@ -118,7 +122,7 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
 
     lr_str = lr_tag(learning_rate)
 
-    subdir = time.strftime("%Y%m%d-%H%M%S") + "-" + name;
+    subdir = name + "-" + time.strftime("%Y%m%d-%H%M%S");
     longname = "%s-%s-t%d-enc%d-dec%d-z%d-lr%s" % (dataset, attention_tag, n_iter, enc_dim, dec_dim, z_dim, lr_str)
     pickle_file = subdir + "/" + longname + ".pkl"
 
@@ -157,14 +161,7 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
     #------------------------------------------------------------------------
     x = tensor.matrix('features')
     
-    #x_recons = 1. + x
     x_recons, kl_terms = draw.reconstruct(x)
-    #x_recons, _, _, _, _ = draw.silly(x, n_steps=10, batch_size=100)
-    #x_recons = x_recons[-1,:,:]
-
-    #samples = draw.sample(100) 
-    #x_recons = samples[-1, :, :]
-    #x_recons = samples[-1, :, :]
 
     recons_term = BinaryCrossEntropy().apply(x, x_recons)
     recons_term.name = "recons_term"
@@ -186,8 +183,6 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
         #step_rule=RMSProp(learning_rate),
         #step_rule=Momentum(learning_rate=learning_rate, momentum=0.95)
     )
-    #algorithm.add_updates(scan_updates)
-
 
     #------------------------------------------------------------------------
     # Setup monitors
@@ -246,8 +241,9 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
                 test_stream,
 #                updates=scan_updates, 
                 prefix="test"),
-            Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            #Checkpoint(image_size=image_size, save_subdir=subdir, path=pickle_file, before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            #Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
+            PartsOnlyCheckpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
+            SampleCheckpoint(image_size=image_size[0], channels=channels, save_subdir=subdir, before_training=True, after_epoch=True),
             ProgressBar(),
             Printing()] + plotting_extensions)
 
@@ -269,7 +265,7 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, dest="name",
                 default=None, help="Name for this experiment")
     parser.add_argument("--dataset", type=str, dest="dataset",
-                default="bmnist", help="Dataset to use: [bmnist|mnist|sketch]")
+                default="bmnist", help="Dataset to use: [bmnist|mnist|cifar10]")
     parser.add_argument("--epochs", type=int, dest="epochs",
                 default=100, help="Number of training epochs to do")
     parser.add_argument("--bs", "--batch-size", type=int, dest="batch_size",
