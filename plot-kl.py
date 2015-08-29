@@ -9,10 +9,13 @@ import pylab
 import matplotlib as mpl
 import cPickle as pickle
 
+from pandas import DataFrame
+
 from mpl_toolkits.mplot3d import Axes3D
 
 from blocks.main_loop import MainLoop
-from blocks.log import AbstractTrainingLog
+from blocks.log.log import TrainingLogBase
+
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
 DATEFMT = "%H:%M:%S"
@@ -32,16 +35,17 @@ if __name__ == "__main__":
 
     if isinstance(p, MainLoop):
         log = p.log
-    elif isinstance(p, AbstractTrainingLog):
+    elif isinstance(p, TrainingLogBase):
         log = p
     else: 
         print("Don't know how to handle unpickled %s" % type(p))
         exit(1)
 
-    df = log.to_dataframe()
-    df = df.iloc[[0]+log.status._epoch_ends]
+    df = DataFrame.from_dict(log, orient='index')
+    #df = df.iloc[[0]+log.status._epoch_ends]
     
     cols = ["train_kl_term_%d" % i for i in range(64)]
+    cols = filter(lambda col: col in df.columns, cols)
 
     kl = df[cols]
     kl = np.asarray(kl)
