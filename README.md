@@ -46,49 +46,61 @@ and download the binarized MNIST data. To do that using the latest version of Fu
     fuel-download binarized_mnist
     fuel-convert binarized_mnist
 
-Similarly for cifar10:
+Similarly for svhn2 or other datasets:
 
     cd $FUEL_DATA_PATH
-    fuel-download cifar10
-    fuel-convert cifar10
-    
-The [datasets/README.md](./draw/datasets/README.md) file has instructions for additional data-sets.
+    fuel-download svhn -d . 2
+    fuel-convert svhn -d . 2
 
 
 Training with attention
 -----------------------
-Before training you need to start the bokeh-server
-
-    bokeh-server
-or
-
-    bokeh-server --ip 0.0.0.0
-
 To train a model with a 2x2 read and a 5x5 write attention window run
 
     cd draw
     ./train-draw.py --attention=2,5 --niter=64 --lr=3e-4 --epochs=100
 
-On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. Once training starts you can track its
+On Amazon g2xlarge it takes more than 40min for Theano's compilation to end and training to start. If you enable the bokeh-server, once training starts you can track its
 [live plotting](http://blocks.readthedocs.org/en/latest/plotting.html).
-It will take about 2 days to train the model. After each epoch it will save the following files:
+It will take about 2 days to train the model.
 
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log_model.pkl) of the model [issue: access denied]
- * a [pickle](https://s3.amazonaws.com/udidraw/mnist-r2-w5-t64-enc256-dec256-z100-lr34_log.pkl) [issue: access denied]
-of the [log](http://blocks.readthedocs.org/en/latest/api/log.html#blocks.log.TrainingLog)
- * [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) showing how the creation of the result.
+After each epoch it will save the following files:
 
-The [animation.gif](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif) can also be created manually with
+ * a pickle of the model
+ * a pickle of the log
+ * sampled output image for that epoch
+ * animation of sampled output
 
-    python sample.py [pickle-of-model]
-    convert -delay 5 -loop 0 samples-*.png animaion.gif
-creating samples similar to 
+Pre-trained model
+-----------------
+You can download this [pre-trained pickle file](http://drib.net/exdb/draw/svhn_model.pkl) trained against the Stanford [Street View House Numbers Dataset](http://ufldl.stanford.edu/housenumbers/). 
 
- ![Samples-r2-w5-t64](doc/mnist-r2-w5-t64-enc256-dec256-z100-lr34.gif)
+To generate sampled output including an animation, simply run
+
+```bash
+python sample.py svhn_model.pkl --channels 3 --size 32
+```
+
+![SVHN Sample](http://drib.net/exdb/draw/svhn_sequence.gif)
+
+The image above should appear at `samples/sequence.gif`. Note that all dependencies are needed, and unfortunately this includes a gpu because python cannot unpickle CudaNdarray objects without it. This is a [known problem](http://stackoverflow.com/questions/25237039/converting-a-theano-model-built-on-gpu-to-cpu) that we don't yet a have general solution to.
+
+You can also generate this model yourself. The parameters used to run it were:
+
+```bash
+python train-draw.py --name=my_svhn --dataset=svhn2 \
+  --attention=5,5 --niter=32 --lr=3e-4 --epochs=100 \
+  --enc-dim 512 --dec-dim 512
+```
+
+After 100-200 epochs, the model above achieved a `test_nll_bound` of 1825.82.
+
+Log
+---
 
 Run 
     
-    pyhthon plot-kl.py [pickle-of-log]
+    python plot-kl.py [pickle-of-log]
 
 to create a visualization of the KL divergence potted over inference iterations and epochs. E.g:
 
@@ -114,4 +126,4 @@ operation.
 
 Note
 ----
-Work in progress
+Work in progress.

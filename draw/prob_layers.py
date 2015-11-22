@@ -92,17 +92,17 @@ class BernoulliTopLayer(Initializable, ProbabilisticTopLayer):
     def _allocate(self):
         b = shared_floatx_zeros((self.dim_X,), name='b')
         add_role(b, BIASES)
-        self.params.append(b)
+        self.parameters.append(b)
         self.add_auxiliary_variable(b.norm(2), name='b_norm')
         
     def _initialize(self):
-        b, = self.params
+        b, = self.parameters
         self.biases_init.initialize(b, self.rng)
 
 
     @application(inputs=[], outputs=['X_expected'])
     def sample_expected(self):
-        b = self.params[0]
+        b = self.parameters[0]
         return tensor.nnet.sigmoid(b)
 
     @application(outputs=['X', 'log_prob'])
@@ -163,15 +163,15 @@ class GaussianTopLayer(Initializable, ProbabilisticTopLayer):
     def _allocate(self):
         b = shared_floatx_zeros((self.dim_X,), name='b')
         add_role(b, BIASES)
-        self.params = [b]
+        self.parameters = [b]
         
     def _initialize(self):
-        b, = self.params
+        b, = self.parameters
         self.biases_init.initialize(b, self.rng)
 
     @application(inputs=[], outputs=['mean', 'log_sigma'])
     def sample_expected(self, n_samples):
-        b, = self.params
+        b, = self.parameters
         mean      = tensor.zeros((n_samples, self.dim_X))
         log_sigma = tensor.zeros((n_samples, self.dim_X)) + b
         return mean, log_sigma
@@ -230,12 +230,12 @@ class GaussianLayer(Initializable, ProbabilisticLayer):
         add_role(b_mean, BIASES)
         add_role(b_ls, BIASES)
 
-        self.params = [W_mean, W_ls, b_mean, b_ls]
+        self.parameters = [W_mean, W_ls, b_mean, b_ls]
         
     def _initialize(self):
         super(GaussianLayer, self)._initialize()
 
-        W_mean, W_ls, b_mean, b_ls = self.params
+        W_mean, W_ls, b_mean, b_ls = self.parameters
 
         self.weights_init.initialize(W_mean, self.rng)
         self.weights_init.initialize(W_ls, self.rng)
@@ -244,7 +244,7 @@ class GaussianLayer(Initializable, ProbabilisticLayer):
 
     @application(inputs=['Y'], outputs=['mean', 'log_sigma'])
     def sample_expected(self, Y):
-        W_mean, W_ls, b_mean, b_ls = self.params
+        W_mean, W_ls, b_mean, b_ls = self.parameters
 
         a = tensor.tanh(self.linear_transform.apply(Y))
         mean      = tensor.dot(a, W_mean) + b_mean
