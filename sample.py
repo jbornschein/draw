@@ -12,7 +12,7 @@ import os
 
 from PIL import Image
 from blocks.main_loop import MainLoop
-from blocks.model import AbstractModel
+from blocks.model import Model
 from blocks.config import config
 
 FORMAT = '[%(asctime)s] %(name)-15s %(message)s'
@@ -72,7 +72,7 @@ def img_grid(arr, global_scale=True):
     return Image.fromarray(out)
 
 def generate_samples(p, subdir, output_size, channels):
-    if isinstance(p, AbstractModel):
+    if isinstance(p, Model):
         model = p
     else:
         print("Don't know how to handle unpickled %s" % type(p))
