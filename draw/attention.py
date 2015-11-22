@@ -9,6 +9,8 @@ import theano.tensor as T
 
 from theano import tensor
 
+floatX = theano.config.floatX
+
 #-----------------------------------------------------------------------------
         
 def my_batched_dot(A, B):     
@@ -65,11 +67,13 @@ class ZoomableAttentionWindow(object):
         tol = 1e-4
         N = self.N
 
-        muX = center_x.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*(T.arange(N)-N/2-0.5)
-        muY = center_y.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*(T.arange(N)-N/2-0.5)
+        rng = T.arange(N, dtype=floatX)-N/2.+0.5  # e.g.  [1.5, -0.5, 0.5, 1.5]
 
-        a = tensor.arange(self.img_width)
-        b = tensor.arange(self.img_height)
+        muX = center_x.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*rng
+        muY = center_y.dimshuffle([0, 'x']) + delta.dimshuffle([0, 'x'])*rng
+
+        a = tensor.arange(self.img_width, dtype=floatX)
+        b = tensor.arange(self.img_height, dtype=floatX)
         
         FX = tensor.exp( -(a-muX.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
         FY = tensor.exp( -(b-muY.dimshuffle([0,1,'x']))**2 / 2. / sigma.dimshuffle([0,'x','x'])**2 )
