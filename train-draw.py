@@ -48,7 +48,6 @@ except ImportError:
 import draw.datasets as datasets
 from draw.draw import *
 from draw.samplecheckpoint import SampleCheckpoint
-from draw.partsonlycheckpoint import PartsOnlyCheckpoint
 
 sys.setrecursionlimit(100000)
 
@@ -242,7 +241,7 @@ def main(name, dataset, epochs, batch_size, learning_rate, attention,
 #                updates=scan_updates, 
                 prefix="test"),
             #Checkpoint(name, before_training=False, after_epoch=True, save_separately=['log', 'model']),
-            PartsOnlyCheckpoint("{}/{}".format(subdir,name), before_training=True, after_epoch=True, save_separately=['log', 'model']),
+            Checkpoint("{}/{}".format(subdir,name), save_main_loop=False, before_training=True, after_epoch=True, save_separately=['log', 'model']),
             SampleCheckpoint(image_size=image_size[0], channels=channels, save_subdir=subdir, before_training=True, after_epoch=True),
             ProgressBar(),
             Printing()] + plotting_extensions)
